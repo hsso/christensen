@@ -6,7 +6,7 @@ import numpy as np
 from os.path import expanduser, join
 import glob
 import argparse
-from scipy import interpolate
+from scipy import interpolate, fftpack
 from hsso import gildas
 
 def ff(pol):
@@ -28,6 +28,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--backend', default='WBS', choices=('HRS', 'WBS'))
 parser.add_argument('--sideband', default='USB', choices=('LSB', 'USB'))
 parser.add_argument('--subband', default=1, type=int, choices=range(1,5))
+parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
+parser.add_argument('--fftlim', default=2e2, type=float,
+                    help='FFT high frequency limit')
 args = parser.parse_args()
 
 datadir = expanduser('~/HssO/Christensen/data')
@@ -40,8 +43,30 @@ freqv, fluxv, throwv = ff('V')
 freq_list = (freqh, freqh+throwh, freqv, freqv+throwv)
 flux_list = (fluxh, -fluxh, fluxv, -fluxv)
 
-freqav, fluxav = gildas.averagen(freq_list, flux_list)
+freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
+vel = gildas.vel(freqav, freq0)
 
-plt.plot(freqav, fluxav,  drawstyle='steps-mid')
-plt.axvline(x=freq0, linestyle='--')
+sample_freq = fftpack.fftfreq(fluxav.size, d=np.abs(freqav[0]-freqav[1]))
+sig_fft = fftpack.fft(fluxav)
+
+if args.debug:
+    pidxs = np.where(sample_freq > 0)
+    f = sample_freq[pidxs]
+    pgram = np.abs(sig_fft)[pidxs]
+    plt.loglog(f, pgram)
+    plt.axvline(x=args.fftlim, linestyle='--')
+    plt.show()
+
+sig_fft[np.abs(sample_freq) > args.fftlim] = 0
+baseline = np.real(fftpack.ifft(sig_fft))
+
+if args.debug:
+    plt.plot(freqav, fluxav,  drawstyle='steps-mid')
+    plt.plot(freqav, baseline,  drawstyle='steps-mid')
+    plt.axvline(x=freq0, linestyle='--')
+    plt.show()
+
+fluxav -= baseline
+mask = [np.abs(vel) < 20]
+plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
 plt.show()
