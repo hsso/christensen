@@ -67,6 +67,10 @@ if args.debug:
     plt.show()
 
 fluxav -= baseline
-mask = [np.abs(vel) < 20]
+mask = [np.abs(vel) <= 20]
 plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
 plt.show()
+
+np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
+                    obsid, freq0, args.backend)),
+                    np.transpose((vel[mask], fluxav[mask])))
