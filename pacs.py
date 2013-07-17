@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from os.path import join
 import glob
+import pywcsgrid2
 import argparse
 from christensen import datadir
+import matplotlib.cm as cm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', default=1342186621, type=int)
@@ -19,6 +21,7 @@ for c in ('Blue', 'Red'):
 
     pmap = hdulist[1].data.byteswap().newbyteorder()
 
-    plt.imshow(pmap)
+    pywcsgrid2.subplot(111, header=hdulist[1].header)
+    plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
     plt.colorbar()
     plt.show()
