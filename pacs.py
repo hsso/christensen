@@ -20,8 +20,15 @@ for c in ('Blue', 'Red'):
     hdulist = pyfits.open(fitsfile)
 
     pmap = hdulist[1].data.byteswap().newbyteorder()
+    sh = pmap.shape
+    patch = pmap[sh[0]/2-5:sh[0]/2+5, sh[1]/2-5:sh[1]/2+5]
+    h = hdulist[1].header
 
-    pywcsgrid2.subplot(111, header=hdulist[1].header)
-    plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
+#     ax = pywcsgrid2.subplot(111, header= h)
+#     ax.set_ticklabel_type("delta", "delta", offset=h["crval1"],
+#                     latitude=h["crval2"])
+#     ax.grid()
+    plt.imshow(patch, origin="lower", cmap=cm.gist_heat_r)
     plt.colorbar()
+    plt.contour(np.log10(patch), colors='k')
     plt.show()
