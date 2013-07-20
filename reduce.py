@@ -62,13 +62,14 @@ baseline = np.real(fftpack.ifft(sig_fft))
 
 if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
-    plt.plot(freqav, baseline,  drawstyle='steps-mid')
+    plt.plot(freqav, baseline)
     plt.axvline(x=freq0, linestyle='--')
     plt.show()
 
 fluxav -= baseline
+print('rms = {0:.2f} mK'.format(np.std(fluxav[4:-4])*1e3))
 mask = [np.abs(vel) <= 20]
-plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
+plt.plot(vel, fluxav,  drawstyle='steps-mid')
 plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
