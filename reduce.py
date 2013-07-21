@@ -64,6 +64,8 @@ f = np.linspace(1, 5e2, 1e4)
 pgram, peak_freqs, peak_flux = class_utils.pgram_peaks(freqav, scaled_flux, f, 10)
 if args.debug:
     plt.plot(f, pgram)
+    for maxfreq in peak_freqs:
+        plt.axvline(x=maxfreq, linestyle='--')
     plt.show()
 
 fluxav -= baseline
