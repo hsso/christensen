@@ -6,18 +6,9 @@ import numpy as np
 from os.path import expanduser, join
 import glob
 import argparse
-from scipy import interpolate, fftpack
+from scipy import fftpack
 from hsso import gildas
-
-def fft(hdulist, sideband, subband):
-    "Return frequency, flux and frequency throw"
-    for i in hdulist[1].header.ascardlist().keys():
-        if hdulist[1].header[i] == 'loThrow':
-            throw = hdulist[1].header[i[4:]]
-            break
-    freq = hdulist[1].data.field('{0}frequency_{1}'.format(sideband.lower(), subband))[0]
-    flux = hdulist[1].data.field('flux_{0}'.format(subband))[0]
-    return freq, flux, throw
+from herschel import fft
 
 # Parsing command line arguments
 parser = argparse.ArgumentParser()
