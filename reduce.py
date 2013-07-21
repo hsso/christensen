@@ -9,18 +9,14 @@ import argparse
 from scipy import interpolate, fftpack
 from hsso import gildas
 
-def ff(pol):
-    hdulist = pyfits.open( glob.glob(
-            join(datadir, str(obsid), 'level2',
-            '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
-            'box_001', '*.fits*'))[0])
-
+def fft(hdulist, sideband, subband):
+    "Return frequency, flux and frequency throw"
     for i in hdulist[1].header.ascardlist().keys():
         if hdulist[1].header[i] == 'loThrow':
             throw = hdulist[1].header[i[4:]]
             break
-    freq = hdulist[1].data.field('{0}frequency_{1}'.format(args.sideband.lower(), args.subband))[0]
-    flux = hdulist[1].data.field('flux_{0}'.format(args.subband))[0]
+    freq = hdulist[1].data.field('{0}frequency_{1}'.format(sideband.lower(), subband))[0]
+    flux = hdulist[1].data.field('flux_{0}'.format(subband))[0]
     return freq, flux, throw
 
 # Parsing command line arguments
@@ -37,11 +33,15 @@ datadir = expanduser('~/HssO/Christensen/data')
 obsid = 1342204014
 freq0 = 556.9359877
 
-freqh, fluxh, throwh = ff('H')
-freqv, fluxv, throwv = ff('V')
-
-freq_list = (freqh, freqh+throwh, freqv, freqv+throwv)
-flux_list = (fluxh, -fluxh, fluxv, -fluxv)
+freq_list, flux_list = [], []
+for pol in ('H', 'V'):
+    hdulist = pyfits.open( glob.glob(
+        join(datadir, str(obsid), 'level2',
+        '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
+        'box_001', '*.fits*'))[0])
+    freq, flux, throw = fft(hdulist, args.sideband, args.subband)
+    freq_list.extend([freq, freq+throw])
+    flux_list.extend([flux, -flux])
 
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0)
