@@ -7,7 +7,7 @@ from os.path import expanduser, join
 import glob
 import argparse
 from scipy import fftpack
-from hsso import gildas
+from hsso import gildas, class_utils
 from herschel import fft
 
 # Parsing command line arguments
@@ -31,6 +31,8 @@ for pol in ('H', 'V'):
         '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
         'box_001', '*.fits*'))[0])
     freq, flux, throw = fft(hdulist, args.sideband, args.subband)
+    flux = flux.byteswap().newbyteorder('L')
+    freq = freq.byteswap().newbyteorder('L')
     freq_list.extend([freq, freq+throw])
     flux_list.extend([flux, -flux])
 
@@ -55,6 +57,13 @@ if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
     plt.plot(freqav, baseline)
     plt.axvline(x=freq0, linestyle='--')
+    plt.show()
+
+scaled_flux = fluxav-fluxav.mean()
+f = np.linspace(1, 5e2, 1e4)
+pgram, peak_freqs, peak_flux = class_utils.pgram_peaks(freqav, scaled_flux, f, 10)
+if args.debug:
+    plt.plot(f, pgram)
     plt.show()
 
 fluxav -= baseline
