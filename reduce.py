@@ -6,8 +6,9 @@ import numpy as np
 from os.path import expanduser, join
 import glob
 import argparse
-from scipy import fftpack
-from hsso import gildas, class_utils
+from scipy import linalg, fftpack
+from hsso import gildas
+from hsso.class_utils import pgram_peaks, linfunc, fitfunc
 from herschel import fft
 from christensen import datadir, freq0
 
@@ -19,6 +20,8 @@ parser.add_argument('--subband', default=1, type=int, choices=range(1,5))
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('--fftlim', default=2e2, type=float,
                     help='FFT high frequency limit')
+parser.add_argument('-n', '--num', default=8, type=int,
+                    help='number of sine waves')
 args = parser.parse_args()
 
 obsid = 1342204014
@@ -60,15 +63,28 @@ if args.debug:
     plt.axvline(x=freq0, linestyle='--')
     plt.show()
 
+fluxav -= baseline
+
 # Lomb-Scargle periodogram
 scaled_flux = fluxav-fluxav.mean()
 # frequency
-f = np.linspace(1, 8e2, 1e4)
-pgram, peak_freqs, peak_flux = class_utils.pgram_peaks(freqav, scaled_flux, f, 10)
+f = np.linspace(1e2, 2e4, 1e4)
+pgram, peak_freqs, peak_flux = pgram_peaks(freqav, scaled_flux, f, args.num)
 if args.debug:
     plt.loglog(f, pgram)
     for maxfreq in peak_freqs:
         plt.axvline(x=maxfreq, linestyle='--')
+    plt.show()
+
+A = linfunc(np.ones(2*args.num), freqav, peak_freqs)
+c, resid, rank, sigma = linalg.lstsq(A, scaled_flux)
+baseline = np.sum(A*c, axis=1) + fluxav.mean()
+
+if args.debug:
+    plt.plot(freqav, fluxav,  drawstyle='steps-mid')
+    plt.plot(freqav, baseline)
+    plt.axvline(x=freq0, linestyle='--')
+#     plt.plot(freqav, 0.03*np.sin(np.max(peak_freqs)*freqav), 'red')
     plt.show()
 
 fluxav -= baseline
@@ -79,4 +95,4 @@ plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
                     obsid, freq0, args.backend)),
-                    np.transpose((vel[mask], fluxav[mask])))
+                    np.transpose((vel[mask], fluxav[mask]*1e3)))
