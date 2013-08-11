@@ -9,6 +9,7 @@ import argparse
 from scipy import fftpack
 from hsso import gildas, class_utils
 from herschel import fft
+from christensen import datadir, freq0
 
 # Parsing command line arguments
 parser = argparse.ArgumentParser()
@@ -20,12 +21,11 @@ parser.add_argument('--fftlim', default=2e2, type=float,
                     help='FFT high frequency limit')
 args = parser.parse_args()
 
-datadir = expanduser('~/HssO/Christensen/data')
 obsid = 1342204014
-freq0 = 556.9359877
 
 freq_list, flux_list = [], []
 for pol in ('H', 'V'):
+    """Return list of frequencies and fluxes in little endian byte order"""
     hdulist = pyfits.open( glob.glob(
         join(datadir, str(obsid), 'level2',
         '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
@@ -39,6 +39,7 @@ for pol in ('H', 'V'):
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0)
 
+# FFT
 sample_freq = fftpack.fftfreq(fluxav.size, d=np.abs(freqav[0]-freqav[1]))
 sig_fft = fftpack.fft(fluxav)
 
@@ -59,11 +60,13 @@ if args.debug:
     plt.axvline(x=freq0, linestyle='--')
     plt.show()
 
+# Lomb-Scargle periodogram
 scaled_flux = fluxav-fluxav.mean()
-f = np.linspace(1, 5e2, 1e4)
+# frequency
+f = np.linspace(1, 8e2, 1e4)
 pgram, peak_freqs, peak_flux = class_utils.pgram_peaks(freqav, scaled_flux, f, 10)
 if args.debug:
-    plt.plot(f, pgram)
+    plt.loglog(f, pgram)
     for maxfreq in peak_freqs:
         plt.axvline(x=maxfreq, linestyle='--')
     plt.show()
