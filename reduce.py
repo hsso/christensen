@@ -22,7 +22,21 @@ parser.add_argument('--fftlim', default=2e2, type=float,
                     help='FFT high frequency limit')
 parser.add_argument('-n', '--num', default=8, type=int,
                     help='number of sine waves')
+parser.add_argument('-m', '--mol', default='H2O', choices=('H2O', 'NH3'))
 args = parser.parse_args()
+
+if args.mol == "H2O":
+    args.sideband = "LSB"
+    if args.backend == "HRS":
+        args.subband = 1
+    elif args.backend == "WBS":
+        args.subband = 4
+elif args.mol == "NH3":
+    args.sideband = "USB"
+    if args.backend == "HRS":
+        args.subband = 1
+    elif args.backend == "WBS":
+        args.subband = 4
 
 obsid = 1342204014
 
@@ -40,7 +54,7 @@ for pol in ('H', 'V'):
     flux_list.extend([flux, -flux])
 
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
-vel = gildas.vel(freqav, freq0)
+vel = gildas.vel(freqav, freq0[args.mol])
 
 # FFT
 sample_freq = fftpack.fftfreq(fluxav.size, d=np.abs(freqav[0]-freqav[1]))
@@ -60,7 +74,7 @@ baseline = np.real(fftpack.ifft(sig_fft))
 if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
     plt.plot(freqav, baseline)
-    plt.axvline(x=freq0, linestyle='--')
+    plt.axvline(x=freq0[args.mol], linestyle='--')
     plt.show()
 
 fluxav -= baseline
@@ -83,7 +97,7 @@ baseline = np.sum(A*c, axis=1) + fluxav.mean()
 if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
     plt.plot(freqav, baseline)
-    plt.axvline(x=freq0, linestyle='--')
+    plt.axvline(x=freq0[args.mol], linestyle='--')
 #     plt.plot(freqav, 0.03*np.sin(np.max(peak_freqs)*freqav), 'red')
     plt.show()
 
@@ -94,5 +108,5 @@ plt.plot(vel, fluxav,  drawstyle='steps-mid')
 plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
-                    obsid, freq0, args.backend)),
+                    obsid, freq0[args.mol], args.backend)),
                     np.transpose((vel[mask], fluxav[mask]*1e3)))
