@@ -15,8 +15,8 @@ from christensen import datadir, freq0
 # Parsing command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--backend', default='WBS', choices=('HRS', 'WBS'))
-parser.add_argument('--sideband', default='USB', choices=('LSB', 'USB'))
-parser.add_argument('--subband', default=1, type=int, choices=range(1,5))
+parser.add_argument('--sideband', default='', choices=('', 'LSB', 'USB'))
+parser.add_argument('--subband', default=0, type=int, choices=range(5))
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('--fftlim', default=2e2, type=float,
                     help='FFT high frequency limit')
@@ -25,18 +25,10 @@ parser.add_argument('-n', '--num', default=8, type=int,
 parser.add_argument('-m', '--mol', default='H2O', choices=('H2O', 'NH3'))
 args = parser.parse_args()
 
-if args.mol == "H2O":
-    args.sideband = "LSB"
-    if args.backend == "HRS":
-        args.subband = 1
-    elif args.backend == "WBS":
-        args.subband = 4
-elif args.mol == "NH3":
-    args.sideband = "USB"
-    if args.backend == "HRS":
-        args.subband = 1
-    elif args.backend == "WBS":
-        args.subband = 4
+subband = {'HRS': 1, 'WBS': 4}
+sideband = {'H2O': 'LSB', 'NH3': 'USB'}
+if not args.subband: args.subband = subband[args.backend]
+if not args.sideband: args.sideband = sideband[args.mol]
 
 obsid = 1342204014
 
