@@ -40,7 +40,7 @@ for pol in ('H', 'V'):
         '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
         'box_001', '*.fits*'))[0])
     freq, flux, throw = fft(hdulist, args.sideband, args.subband)
-    flux = flux.byteswap().newbyteorder('L')
+    flux = flux.byteswap().newbyteorder('L')/.75
     freq = freq.byteswap().newbyteorder('L')
     freq_list.extend([freq, freq+throw])
     flux_list.extend([flux, -flux])
@@ -94,7 +94,12 @@ if args.debug:
     plt.show()
 
 fluxav -= baseline
-print('rms = {0:.2f} mK'.format(np.std(fluxav[4:-4])*1e3))
+delv = np.abs(np.average(vel[1:]-vel[:-1]))
+n = np.ceil(2*0.4/delv)
+rms = np.std(fluxav[4:-4])*1e3
+upper = 3 * np.sqrt(n) * delv * rms
+print('rms = {0:.2f} mK, delv = {1:.3f} km/s, upper= {2:.2f} K m/s'.format(rms,
+        delv, upper))
 mask = [np.abs(vel) <= 20]
 plt.plot(vel, fluxav,  drawstyle='steps-mid')
 plt.show()
