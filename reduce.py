@@ -23,6 +23,7 @@ parser.add_argument('--fftlim', default=2e2, type=float,
 parser.add_argument('-n', '--num', default=8, type=int,
                     help='number of sine waves')
 parser.add_argument('-m', '--mol', default='H2O', choices=('H2O', 'NH3'))
+parser.add_argument('--twiny', action='store_true')
 args = parser.parse_args()
 
 subband = {'HRS': 1, 'WBS': 4}
@@ -67,6 +68,13 @@ if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
     plt.plot(freqav, baseline)
     plt.axvline(x=freq0[args.mol], linestyle='--')
+    if args.twiny:
+        ax1 = plt.gca()
+        # update xlim of ax2
+        ax2 = ax1.twiny()
+        x1, x2 = ax1.get_xlim()
+        ax2.set_xlim(gildas.vel(x1, freq0[args.mol]),
+                     gildas.vel(x2, freq0[args.mol]))
     plt.show()
 
 fluxav -= baseline
