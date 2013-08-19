@@ -128,6 +128,7 @@ mask = [np.abs(vel) <= 20]
 plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
 # plt.axvspan(*args.lim, facecolor='b', alpha=0.5)
 plt.axhline(y=0)
+plt.axvline(x=0)
 plt.savefig('{0}_{1}_baseline.pdf'.format(obsid, args.backend))
 plt.show()
 
