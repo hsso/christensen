@@ -23,7 +23,11 @@ parser.add_argument('--fftlim', default=2e2, type=float,
 parser.add_argument('-n', '--num', default=8, type=int,
                     help='number of sine waves')
 parser.add_argument('-m', '--mol', default='H2O', choices=('H2O', 'NH3'))
+parser.add_argument('--deg', default=2, type=int,
+                    help='baseline polynomial degree')
 parser.add_argument('--twiny', action='store_true')
+parser.add_argument("--lim", nargs=2, type=float, default=(-1, 1),
+                    help='line limits in km/s')
 args = parser.parse_args()
 
 subband = {'HRS': 1, 'WBS': 4}
@@ -49,9 +53,16 @@ for pol in ('H', 'V'):
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0[args.mol])
 
+baseflux = fluxav.copy()
+maskline = np.where(np.abs(vel) < 1)
+maskvel = np.where((np.abs(vel) < 3) & (np.abs(vel) > 1))
+velmask = np.where((np.abs(vel) < 3))
+func = np.poly1d(np.polyfit(freqav[maskvel], baseflux[maskvel], args.deg))
+baseflux[maskline] = func(freqav[maskline])
+
 # FFT
 sample_freq = fftpack.fftfreq(fluxav.size, d=np.abs(freqav[0]-freqav[1]))
-sig_fft = fftpack.fft(fluxav)
+sig_fft = fftpack.fft(baseflux)
 
 if args.debug:
     pidxs = np.where(sample_freq > 0)
@@ -67,6 +78,7 @@ baseline = np.real(fftpack.ifft(sig_fft))
 if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
     plt.plot(freqav, baseline)
+    plt.plot(freqav[velmask], func(freqav[velmask]))
     plt.axvline(x=freq0[args.mol], linestyle='--')
     if args.twiny:
         ax1 = plt.gca()
@@ -77,10 +89,11 @@ if args.debug:
                      gildas.vel(x2, freq0[args.mol]))
     plt.show()
 
-fluxav -= baseline
+# fluxav -= baseline
+baseflux -= baseline
 
 # Lomb-Scargle periodogram
-scaled_flux = fluxav-fluxav.mean()
+scaled_flux = baseflux-baseflux.mean()
 # frequency
 f = np.linspace(1e2, 2e4, 1e4)
 pgram, peak_freqs, peak_flux = pgram_peaks(freqav, scaled_flux, f, args.num)
@@ -92,7 +105,8 @@ if args.debug:
 
 A = linfunc(np.ones(2*args.num), freqav, peak_freqs)
 c, resid, rank, sigma = linalg.lstsq(A, scaled_flux)
-baseline = np.sum(A*c, axis=1) + fluxav.mean()
+lomb_baseline = np.sum(A*c, axis=1) + baseflux.mean()
+baseline += lomb_baseline
 
 if args.debug:
     plt.plot(freqav, fluxav,  drawstyle='steps-mid')
@@ -106,10 +120,15 @@ delv = np.abs(np.average(vel[1:]-vel[:-1]))
 n = np.ceil(2*0.4/delv)
 rms = np.std(fluxav[4:-4])*1e3
 upper = 3 * np.sqrt(n) * delv * rms
+intens = gildas.intens(fluxav, vel, lim=args.lim)
+print('intens = {0[0]} {0[1]} K km/s'.format(intens))
 print('rms = {0:.2f} mK, delv = {1:.3f} km/s, upper= {2:.2f} K m/s'.format(rms,
         delv, upper))
 mask = [np.abs(vel) <= 20]
-plt.plot(vel, fluxav,  drawstyle='steps-mid')
+plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
+# plt.axvspan(*args.lim, facecolor='b', alpha=0.5)
+plt.axhline(y=0)
+plt.savefig('{0}_{1}_baseline.pdf'.format(obsid, args.backend))
 plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
