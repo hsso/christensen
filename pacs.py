@@ -13,6 +13,7 @@ import matplotlib.cm as cm
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', default=1342186621, type=int,
                 choices=(1342186621, 1342186622, 1342203478, 1342203479))
+parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 args = parser.parse_args()
 
 # pmap[pmap < cutlevels[i][0]] = cutlevels[i][0]
@@ -41,6 +42,9 @@ for c in ('Blue', 'Red'):
 #     plt.hist(pmap)
 #     pmap[pmap > 0.1] = 0.1
 #     pmap[pmap < 0.003] = -0.003
+    if args.debug:
+        plt.plot(pmap.flat)
+        plt.show()
     plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
 #     plt.scatter(*comet)
 #     plt.scatter(fov, fov)
