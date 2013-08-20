@@ -20,26 +20,27 @@ args = parser.parse_args()
 
 # pmap[pmap < cutlevels[i][0]] = cutlevels[i][0]
 
-fitsfile = glob.glob(join(datadir, str(args.obsid), 'level2',
-    'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
-hdulist = pyfits.open(fitsfile)
+def pacsmap(obsid):
+    fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
+        'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
+    hdulist = pyfits.open(fitsfile)
 
-# swap to little-endian byte order to avoid matplotlib bug
-pmap = hdulist[1].data.byteswap().newbyteorder()
-cdelt2 = hdulist[1].header['CDELT2']
-date_obs = hdulist[0].header['DATE-OBS']
-wcs = pywcs.WCS(hdulist[1].header)
-# origin coordinate is 0 (Numpy and C standards)
-comet = wcs.wcs_sky2pix([radec], 0)[0]
-pix = np.abs(cdelt2)*3600
-fov = int(round(60/pix))
-print fov, date_obs
-com = [int(i) for i in comet]
-#     patch = pmap[com[1]-fov:com[1]+fov, com[0]-fov:com[0]+fov]
+    cdelt2 = hdulist[1].header['CDELT2']
+    date_obs = hdulist[0].header['DATE-OBS']
+    wcs = pywcs.WCS(hdulist[1].header)
+    # origin coordinate is 0 (Numpy and C standards)
+    comet = wcs.wcs_sky2pix([radec], 0)[0]
+    pix = np.abs(cdelt2)*3600
+    fov = int(round(60/pix))
+    print fov, date_obs
+    com = [int(i) for i in comet]
+    # swap to little-endian byte order to avoid matplotlib bug
+    pmap = hdulist[1].data.byteswap().newbyteorder()
+    patch = pmap[com[1]-fov:com[1]+fov, com[0]-fov:com[0]+fov]
+    return patch
 
-med = np.std(pmap[pmap > 0.])
-signal_stdev= np.std(pmap[pmap > med])
-print med, signal_stdev
+
+pmap = np.average((pacsmap(args.obsid), pacsmap(args.obsid+1)), axis=0)
 
 #     plt.hist(pmap)
 #     pmap[pmap > 0.1] = 0.1
@@ -49,7 +50,7 @@ if args.debug:
     plt.show()
 plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
 plt.colorbar()
-plt.scatter(*comet)
+# plt.scatter(*comet)
 #     plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
 #     plt.plot(ra, dec, 'ro-')

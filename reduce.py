@@ -89,7 +89,6 @@ if args.debug:
                      gildas.vel(x2, freq0[args.mol]))
     plt.show()
 
-# fluxav -= baseline
 baseflux -= baseline
 
 # Lomb-Scargle periodogram
