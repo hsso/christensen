@@ -54,5 +54,9 @@ plt.colorbar()
 #     plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
 #     plt.plot(ra, dec, 'ro-')
-#     plt.contour(np.log10(patch), colors='k')
+if args.band == "blue":
+    levels = np.arange(-1.1, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
+else:
+    levels = np.arange(-.7, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
+plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='k')
 plt.show()
