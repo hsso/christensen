@@ -17,6 +17,7 @@ parser.add_argument('-o', '--obsid', default=1342186621, type=int,
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
+parser.add_argument('-s', '--save', default="store_true", help="save image")
 args = parser.parse_args()
 
 # pmap[pmap < cutlevels[i][0]] = cutlevels[i][0]
@@ -59,4 +60,8 @@ if args.band == "blue":
 else:
     levels = np.arange(-.7, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
 plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='g')
+ax = plt.gca()
+ax.set_axis_off()
+extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
+plt.savefig('{0}_{1}.png'.format(args.obsid, args.band), bbox_inches=extent)
 plt.show()
