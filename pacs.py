@@ -9,6 +9,7 @@ import pywcs
 import argparse
 from christensen import datadir, radec
 import matplotlib.cm as cm
+from scipy.ndimage import interpolation, zoom
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', default=1342186621, type=int,
@@ -30,33 +31,32 @@ def pacsmap(obsid):
     wcs = pywcs.WCS(hdulist[1].header)
     # origin coordinate is 0 (Numpy and C standards)
     comet = wcs.wcs_sky2pix([radec], 0)[0]
-    pix = np.abs(cdelt2)*3600
-    fov = int(round(60/pix))
-    print fov, date_obs
-    com = [int(i) for i in comet]
     # swap to little-endian byte order to avoid matplotlib bug
     pmap = hdulist[1].data.byteswap().newbyteorder()
-    patch = pmap[com[1]-fov:com[1]+fov, com[0]-fov:com[0]+fov]
-    return patch
+    com = [int(round(i)) for i in comet]
+    sh  = [i - round(i) for i in comet]
+    pmap = interpolation.shift(pmap, sh)
+    pix = np.abs(cdelt2)*3600
+    fov = int(round(30/pix))
+    print comet, com, sh, fov, date_obs
+    patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
+    return zoom(patch, 3, order=2)
 
-
+# average orthogonal scans
 pmap = np.average((pacsmap(args.obsid), pacsmap(args.obsid+1)), axis=0)
 
-#     plt.hist(pmap)
-#     pmap[pmap > 0.1] = 0.1
-#     pmap[pmap < 0.003] = -0.003
 if args.debug:
     plt.plot(pmap.flat)
     plt.show()
 plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
 plt.colorbar()
 # plt.scatter(*comet)
-#     plt.scatter(fov, fov)
+fov = pmap.shape[0]/2
+# plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
-#     plt.plot(ra, dec, 'ro-')
 if args.band == "blue":
     levels = np.arange(-1.1, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
 else:
     levels = np.arange(-.7, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
-plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='k')
+plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='g')
 plt.show()
