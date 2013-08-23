@@ -1,7 +1,9 @@
+from os.path import expanduser, join
 
-from os.path import expanduser
+basedir = expanduser('~/HssO/Christensen/')
+datadir = join(basedir, 'data')
+figsdir = join(basedir, 'paper', 'figures')
 
-datadir = expanduser('~/HssO/Christensen/data')
 freq0 = {'H2O': 556.9359877, 'NH3': 572.4980678}
 
 # ra and dec for 1342186621
