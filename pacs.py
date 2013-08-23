@@ -7,7 +7,7 @@ from os.path import join
 import glob
 import pywcs
 import argparse
-from christensen import datadir, figsdir
+from christensen import datadir, figsdir, horizons_file
 import matplotlib.cm as cm
 from scipy.ndimage import interpolation, zoom
 from datetime import datetime
@@ -15,7 +15,7 @@ from hsso import gildas
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', default=1342186621, type=int,
-                choices=(1342186621, 1342186622, 1342203478, 1342203479))
+                choices=(1342186621, 1342203478))
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
@@ -37,8 +37,8 @@ def pacsmap(obsid):
     end = datetime.strptime(date_end[:20], "%Y-%m-%dT%H:%M:%S.")
     mid_time = start + (end-start)/2
     # interpolate ra and dec of the comet
-    ra = gildas.deltadot(mid_time, filename="horizons_2009.txt", column=2)
-    dec = gildas.deltadot(mid_time, filename="horizons_2009.txt", column=3)
+    ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
+    dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
     wcs = pywcs.WCS(hdus[1].header)
     # origin coordinate is 0 (Numpy and C standards)
     comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
@@ -61,9 +61,8 @@ if args.debug:
     plt.show()
 plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
 plt.colorbar()
-# plt.scatter(*comet)
 fov = pmap.shape[0]/2
-# plt.scatter(fov, fov)
+plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
 if args.band == "blue":
     levels = np.arange(-1.1, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
