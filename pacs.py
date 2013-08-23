@@ -29,6 +29,8 @@ def pacsmap(obsid):
         'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
     hdus = pyfits.open(fitsfile)
 
+    # swap to little-endian byte order to avoid matplotlib bug
+    pmap = hdus[1].data.byteswap().newbyteorder()
     cdelt2 = hdus[1].header['CDELT2']
     date_obs = hdus[0].header['DATE-OBS']
     date_end = hdus[0].header['DATE-END']
@@ -42,16 +44,20 @@ def pacsmap(obsid):
     wcs = pywcs.WCS(hdus[1].header)
     # origin coordinate is 0 (Numpy and C standards)
     comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
-    # swap to little-endian byte order to avoid matplotlib bug
-    pmap = hdus[1].data.byteswap().newbyteorder()
+    if args.debug:
+        plt.imshow(pmap, origin="lower")
+        plt.scatter(*comet)
+        plt.show()
+        plt.close()
     com = [int(round(i)) for i in comet]
     sh  = [i - round(i) for i in comet]
     pmap = interpolation.shift(pmap, sh)
     pix = np.abs(cdelt2)*3600
     fov = int(round(30/pix))
-    print comet, com, sh, fov, date_obs
+    print pix, comet, sh, date_obs
     patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
-    return zoom(patch, 3, order=2)
+    if args.obsid == 1342186621: patch = zoom(patch, 3, order=2)
+    return patch
 
 # average orthogonal scans
 pmap = np.average((pacsmap(args.obsid), pacsmap(args.obsid+1)), axis=0)
@@ -62,12 +68,12 @@ if args.debug:
 plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
 plt.colorbar()
 fov = pmap.shape[0]/2
-plt.scatter(fov, fov)
+# plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
 if args.band == "blue":
-    levels = np.arange(-1.1, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
+    levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
 else:
-    levels = np.arange(-.7, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
+    levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
 plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='g')
 ax = plt.gca()
 ax.set_axis_off()
