@@ -41,7 +41,14 @@ def pacsmap(obsid):
     # interpolate ra and dec of the comet
     ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
     dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
+    phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
     wcs = pywcs.WCS(hdus[1].header)
+    alpha = np.pi/2 + phase_ang*np.pi/180
+    cos, sin = np.cos(alpha), np.sin(alpha)
+    print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) -- \n"
+            "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
+    print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
+                    25*sin))
     # origin coordinate is 0 (Numpy and C standards)
     comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
     if args.debug:
@@ -49,13 +56,13 @@ def pacsmap(obsid):
         plt.scatter(*comet)
         plt.show()
         plt.close()
-    com = [int(round(i)) for i in comet]
-    sh  = [i - round(i) for i in comet]
+    com = [int(round(i)) for i in comet[::-1]]
+    sh  = [i - round(i) for i in comet[::-1]]
     pmap = interpolation.shift(pmap, sh)
     pix = np.abs(cdelt2)*3600
     fov = int(round(30/pix))
-    print pix, comet, sh, date_obs
-    patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
+    print phase_ang, pix, comet, sh, date_obs
+    patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
     if args.obsid == 1342186621: patch = zoom(patch, 3, order=2)
     return patch
 
