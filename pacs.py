@@ -73,33 +73,34 @@ class Pacsmap(object):
 #         if args.obsid == 1342186621: patch = ndimage.zoom(patch, 3, order=2)
 
     def add(self, pmap):
-        pass
+        self.patch = np.average((self.patch, pmap.patch), axis=0)
 
-def radprof(pmap):
-    y, x = np.indices(pmap.shape)
-    j, i = np.unravel_index(np.argmax(pmap), pmap.shape)
-    r = np.sqrt((x-i)**2 + (y-j)**2)
-    ind = np.argsort(r.flat)
-    return r.flat[ind], pmap.flat[ind]
+    def radprof(self):
+        y, x = np.indices(self.patch.shape)
+        j, i = np.unravel_index(np.argmax(self.patch), self.patch.shape)
+        r = np.sqrt((x-i)**2 + (y-j)**2)
+        ind = np.argsort(r.flat)
+        r *= self.cdelt2
+        return r.flat[ind], self.patch.flat[ind]
 
 # average orthogonal scans
-pmap1 = Pacsmap(args.obsid)
-pmap2 = Pacsmap(args.obsid+1)
-pmap = np.average((pmap1.patch, pmap2.patch), axis=0)
+pmap = Pacsmap(args.obsid)
+pmap.add(Pacsmap(args.obsid+1))
+patch = pmap.patch
 
 if args.debug:
-    plt.plot(pmap.flat)
+    plt.plot(patch.flat)
     plt.show()
-plt.imshow(pmap, origin="lower", cmap=cm.gist_heat_r)
+plt.imshow(patch, origin="lower", cmap=cm.gist_heat_r)
 plt.colorbar()
-fov = pmap.shape[0]/2
+fov = patch.shape[0]/2
 # plt.scatter(fov, fov)
 plt.title('{0} {1}'.format(args.obsid, args.band))
 if args.band == "blue":
-    levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
+    levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
 else:
-    levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(pmap)).max()
-plt.contour(np.log10(np.abs(pmap)), levels=levels, colors='g')
+    levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
+plt.contour(np.log10(np.abs(patch)), levels=levels, colors='g')
 ax = plt.gca()
 ax.set_axis_off()
 extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
@@ -108,8 +109,7 @@ plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
 plt.show()
 plt.close()
 
-r, prof = radprof(pmap)
-r *= pmap1.cdelt2
+r, prof = pmap.radprof()
 np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid, args.band)),
             np.transpose((r, prof)))
 plt.scatter(r, prof)
