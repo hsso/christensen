@@ -30,7 +30,6 @@ class Pacsmap(object):
         self.hdus = pyfits.open(self.fitsfile)
         self.cdelt2 = self.hdus[1].header['CDELT2']*3600
 
-    def patch(self):
         # swap to little-endian byte order to avoid matplotlib bug
         pmap = self.hdus[1].data.byteswap().newbyteorder()
         date_obs = self.hdus[0].header['DATE-OBS']
@@ -70,9 +69,11 @@ class Pacsmap(object):
         pix = np.abs(self.cdelt2)
         fov = int(round(30/pix))
         print phase_ang, pix, comet, sh, date_obs
-        patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
+        self.patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
 #         if args.obsid == 1342186621: patch = ndimage.zoom(patch, 3, order=2)
-        return patch
+
+    def add(self, pmap):
+        pass
 
 def radprof(pmap):
     y, x = np.indices(pmap.shape)
@@ -84,7 +85,7 @@ def radprof(pmap):
 # average orthogonal scans
 pmap1 = Pacsmap(args.obsid)
 pmap2 = Pacsmap(args.obsid+1)
-pmap = np.average((pmap1.patch(), pmap2.patch()), axis=0)
+pmap = np.average((pmap1.patch, pmap2.patch), axis=0)
 
 if args.debug:
     plt.plot(pmap.flat)
