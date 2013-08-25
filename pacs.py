@@ -22,7 +22,7 @@ parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
 parser.add_argument('-s', '--save', default="store_true", help="save image")
 args = parser.parse_args()
 
-class pacsmap(object):
+class Pacsmap(object):
     def __init__(self, obsid):
         """return patch centered on the nucleus"""
         self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
@@ -71,7 +71,7 @@ class pacsmap(object):
         fov = int(round(30/pix))
         print phase_ang, pix, comet, sh, date_obs
         patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
-        if args.obsid == 1342186621: patch = ndimage.zoom(patch, 3, order=2)
+#         if args.obsid == 1342186621: patch = ndimage.zoom(patch, 3, order=2)
         return patch
 
 def radprof(pmap):
@@ -82,8 +82,8 @@ def radprof(pmap):
     return r.flat[ind], pmap.flat[ind]
 
 # average orthogonal scans
-pmap1 = pacsmap(args.obsid)
-pmap2 = pacsmap(args.obsid+1)
+pmap1 = Pacsmap(args.obsid)
+pmap2 = Pacsmap(args.obsid+1)
 pmap = np.average((pmap1.patch(), pmap2.patch()), axis=0)
 
 if args.debug:
@@ -108,10 +108,13 @@ plt.show()
 plt.close()
 
 r, prof = radprof(pmap)
-plt.scatter(r*pmap1.cdelt2, prof)
+r *= pmap1.cdelt2
+np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid, args.band)),
+            np.transpose((r, prof)))
+plt.scatter(r, prof)
 ax = plt.gca()
-ax.set_yscale('log')
-ax.set_xscale('log')
-plt.xlim(1, 60)
-plt.ylim(1e-2, 0.4)
+# ax.set_yscale('log')
+# ax.set_xscale('log')
+plt.xlim(0, 30)
+# plt.ylim(1e-2, 0.4)
 plt.show()
