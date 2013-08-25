@@ -28,7 +28,7 @@ class pacsmap(object):
         self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
             'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
         self.hdus = pyfits.open(self.fitsfile)
-        self.cdelt2 = self.hdus[1].header['CDELT2']
+        self.cdelt2 = self.hdus[1].header['CDELT2']*3600
 
     def patch(self):
         # swap to little-endian byte order to avoid matplotlib bug
@@ -67,7 +67,7 @@ class pacsmap(object):
         com = [int(round(i)) for i in comet[::-1]]
         sh  = [i - round(i) for i in comet[::-1]]
         pmap = ndimage.interpolation.shift(pmap, sh)
-        pix = np.abs(self.cdelt2)*3600
+        pix = np.abs(self.cdelt2)
         fov = int(round(30/pix))
         print phase_ang, pix, comet, sh, date_obs
         patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
@@ -82,8 +82,9 @@ def radprof(pmap):
     return r.flat[ind], pmap.flat[ind]
 
 # average orthogonal scans
-pmap = np.average((pacsmap(args.obsid).patch(),
-                    pacsmap(args.obsid+1).patch()), axis=0)
+pmap1 = pacsmap(args.obsid)
+pmap2 = pacsmap(args.obsid+1)
+pmap = np.average((pmap1.patch(), pmap2.patch()), axis=0)
 
 if args.debug:
     plt.plot(pmap.flat)
@@ -107,10 +108,10 @@ plt.show()
 plt.close()
 
 r, prof = radprof(pmap)
-plt.scatter(r, prof)
+plt.scatter(r*pmap1.cdelt2, prof)
 ax = plt.gca()
 ax.set_yscale('log')
 ax.set_xscale('log')
-plt.xlim(1, 10)
-plt.ylim(1e-2, 0.3)
+plt.xlim(1, 60)
+plt.ylim(1e-2, 0.4)
 plt.show()
