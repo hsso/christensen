@@ -23,7 +23,7 @@ parser.add_argument('-s', '--save', default="store_true", help="save image")
 args = parser.parse_args()
 
 class Pacsmap(object):
-    def __init__(self, obsid):
+    def __init__(self, obsid, zoom=0):
         """return patch centered on the nucleus"""
         self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
             'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
@@ -32,9 +32,9 @@ class Pacsmap(object):
 
         # swap to little-endian byte order to avoid matplotlib bug
         pmap = self.hdus[1].data.byteswap().newbyteorder()
+        # calculate comet position at midtime
         date_obs = self.hdus[0].header['DATE-OBS']
         date_end = self.hdus[0].header['DATE-END']
-        # calculate comet position at midtime
         start = datetime.strptime(date_obs[:20], "%Y-%m-%dT%H:%M:%S.")
         end = datetime.strptime(date_end[:20], "%Y-%m-%dT%H:%M:%S.")
         mid_time = start + (end-start)/2
@@ -45,13 +45,20 @@ class Pacsmap(object):
         phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
         alpha = np.pi/2 + phase_ang*np.pi/180
         cos, sin = np.cos(alpha), np.sin(alpha)
-        print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) -- \n"
+        print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
                 "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
         print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
                         25*sin))
         # origin coordinate is 0 (Numpy and C standards)
         wcs = pywcs.WCS(self.hdus[1].header)
         comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
+        com = [int(round(i)) for i in comet[::-1]]
+        sh  = [i - round(i) for i in comet[::-1]]
+        pmap = ndimage.interpolation.shift(pmap, sh)
+        pix = np.abs(self.cdelt2)
+        fov = int(round(30/pix))
+        self.patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
+        if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
             plt.scatter(*comet)
@@ -63,14 +70,6 @@ class Pacsmap(object):
             plt.scatter(*mapcom, color='r')
             plt.show()
             plt.close()
-        com = [int(round(i)) for i in comet[::-1]]
-        sh  = [i - round(i) for i in comet[::-1]]
-        pmap = ndimage.interpolation.shift(pmap, sh)
-        pix = np.abs(self.cdelt2)
-        fov = int(round(30/pix))
-        print phase_ang, pix, comet, sh, date_obs
-        self.patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
-#         if args.obsid == 1342186621: patch = ndimage.zoom(patch, 3, order=2)
 
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
