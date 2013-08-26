@@ -86,6 +86,7 @@ class Pacsmap(object):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
 
     def radprof(self, binsize=0):
+        """calculate radial profile"""
         y, x = np.indices(self.patch.shape)
         j, i = np.unravel_index(np.argmax(self.patch), self.patch.shape)
         r = np.sqrt((x-i)**2 + (y-j)**2)
@@ -98,14 +99,15 @@ class Pacsmap(object):
             ri = sr.astype(np.int16)
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
-            print rind
+            rind = np.append([0], rind+1)
             nr = rind[1:] - rind[:-1]
+            error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
             csim = np.cumsum(sim)
-            tbin = csim[rind[1:]] - csim[rind[:-1]]
+            tbin = np.append(csim[rind[1]-1], csim[rind[2:]-1] - csim[rind[1:-1]-1])
             rprof = tbin/nr
-            return binsize*(np.arange(len(rprof))+0.5), rprof
+            return binsize*(np.arange(len(rprof))+0.5), rprof, error
         else:
-            return sr, sim
+            return sr, sim, np.zeroes(len(sr))
 
 # average orthogonal scans
 pmap = Pacsmap(args.obsid)
@@ -133,10 +135,10 @@ plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
 plt.show()
 plt.close()
 
-r, prof = pmap.radprof(binsize=args.binsize)
+r, prof, error = pmap.radprof(binsize=args.binsize)
 np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
             args.band, args.binsize)),
-            np.transpose((r, prof)))
+            np.transpose((r, prof, error)))
 plt.scatter(r, prof)
 ax = plt.gca()
 # ax.set_yscale('log')
