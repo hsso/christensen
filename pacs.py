@@ -20,6 +20,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
 parser.add_argument('-s', '--save', default="store_true", help="save image")
+parser.add_argument('--binsize', default=0, type=int, help="bin size")
 args = parser.parse_args()
 
 class Pacsmap(object):
@@ -52,12 +53,12 @@ class Pacsmap(object):
         # origin coordinate is 0 (Numpy and C standards)
         wcs = pywcs.WCS(self.hdus[1].header)
         comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
-        com = [int(round(i)) for i in comet[::-1]]
-        sh  = [i - round(i) for i in comet[::-1]]
-        pmap = ndimage.interpolation.shift(pmap, sh)
+        com = [int(round(i)) for i in comet]
+        sh  = comet-com
+        pmap = ndimage.interpolation.shift(pmap, sh[::-1])
         pix = np.abs(self.cdelt2)
-        fov = int(round(30/pix))
-        self.patch = pmap[com[0]-fov:com[0]+fov+1, com[1]-fov:com[1]+fov+1]
+        fov = int(round(60/pix))
+        self.patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
@@ -71,16 +72,38 @@ class Pacsmap(object):
             plt.show()
             plt.close()
 
+    def shift(self):
+        plt.imshow(self.patch, origin="lower")
+        mapmax = np.unravel_index(np.argmax(self.patch), self.patch.shape)[::-1]
+        plt.scatter(*mapmax)
+        # plot center-of-mass
+        mapcom = ndimage.measurements.center_of_mass(self.patch)[::-1]
+        plt.scatter(*mapcom, color='k')
+        plt.show()
+        plt.close()
+
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
 
-    def radprof(self):
+    def radprof(self, binsize=0):
         y, x = np.indices(self.patch.shape)
         j, i = np.unravel_index(np.argmax(self.patch), self.patch.shape)
         r = np.sqrt((x-i)**2 + (y-j)**2)
         ind = np.argsort(r.flat)
         r *= self.cdelt2
-        return r.flat[ind], self.patch.flat[ind]
+        sr = r.flat[ind]
+        sim = self.patch.flat[ind]
+        if binsize:
+            ri = sr.astype(np.int16)
+            deltar = ri[1:] - ri[:-1]
+            rind = np.where(deltar)[0]
+            nr = rind[1:] - rind[:-1]
+            csim = np.cumsum(sim)
+            tbin = csim[rind[1:]] - csim[rind[:-1]]
+            rprof = tbin/nr
+            return range(len(rprof)), rprof
+        else:
+            return sr, sim
 
 # average orthogonal scans
 pmap = Pacsmap(args.obsid)
@@ -108,8 +131,9 @@ plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
 plt.show()
 plt.close()
 
-r, prof = pmap.radprof()
-np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid, args.band)),
+r, prof = pmap.radprof(binsize=args.binsize)
+np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+            args.band, args.binsize)),
             np.transpose((r, prof)))
 plt.scatter(r, prof)
 ax = plt.gca()
