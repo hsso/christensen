@@ -19,12 +19,12 @@ parser.add_argument('-o', '--obsid', default=1342186621, type=int,
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
-parser.add_argument('-s', '--save', default="store_true", help="save image")
+parser.add_argument('--profile', action="store_true", help="radial profile")
 parser.add_argument('--binsize', default=0, type=int, help="bin size")
 args = parser.parse_args()
 
 class Pacsmap(object):
-    def __init__(self, obsid, zoom=0):
+    def __init__(self, obsid, size=60, zoom=0):
         """return patch centered on the nucleus"""
         self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
             'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
@@ -58,7 +58,7 @@ class Pacsmap(object):
         # shift array to center on comet nucleus
         pmap = ndimage.interpolation.shift(pmap, sh[::-1])
         self.pix = np.abs(self.cdelt2)
-        self.fov = int(round(60/self.pix))
+        self.fov = int(round(size/self.pix))
         # patch with 2fovx2fov
         self.patch = pmap[com[1]-self.fov:com[1]+self.fov+1,
                           com[0]-self.fov:com[0]+self.fov+1]
@@ -69,7 +69,7 @@ class Pacsmap(object):
             plt.show()
             plt.close()
 
-    def shift(self):
+    def shift(self, size=30):
         # select the top 0.99% pixels to calculate the center of mass
         hist, bins = np.histogram(self.patch.ravel(), normed=True, bins=100)
         threshold = bins[np.cumsum(hist) * (bins[1] - bins[0]) > 0.992][0]
@@ -87,17 +87,20 @@ class Pacsmap(object):
         self.comet = [self.fov-com[0], self.fov-com[1]]
         self.sh  = np.array(mapcom)-com
 #         self.patch = ndimage.interpolation.shift(self.patch, sh)
-        self.fov = int(round(30/self.pix))
+        self.fov = int(round(size/self.pix))
         self.patch = self.patch[com[0]-self.fov:com[0]+self.fov+1,
                                 com[1]-self.fov:com[1]+self.fov+1]
 
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
 
-    def radprof(self, binsize=0):
+    def radprof(self, center=None, binsize=0):
         """calculate radial profile"""
         y, x = np.indices(self.patch.shape)
-        j, i = np.unravel_index(np.argmax(self.patch), self.patch.shape)
+        if center:
+            i, j = center
+        else:
+            j, i = np.unravel_index(np.argmax(self.patch), self.patch.shape)
         r = np.sqrt((x-i)**2 + (y-j)**2)
         ind = np.argsort(r.flat)
         r *= self.cdelt2
@@ -116,47 +119,57 @@ class Pacsmap(object):
         else:
             return sr, sim, np.zeros(len(sr))
 
-# average orthogonal scans
-pmap = Pacsmap(args.obsid)
-pmap.add(Pacsmap(args.obsid+1))
-pmap.shift()
-patch = pmap.patch
-
-plt.imshow(patch, origin="lower", interpolation=None)
-plt.colorbar()
-fov = patch.shape[0]/2
-plt.title('{0} {1}'.format(args.obsid, args.band))
-if args.band == "blue":
-    levels = np.arange(-1.4, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+if not args.profile:
+    # average orthogonal scans
+    pmap = Pacsmap(args.obsid)
+    pmap.add(Pacsmap(args.obsid+1))
+    pmap.shift()
+    patch = pmap.patch
+    plt.imshow(patch, origin="lower", interpolation=None)
+    plt.colorbar()
+    fov = patch.shape[0]/2
+    plt.title('{0} {1}'.format(args.obsid, args.band))
+    if args.band == "blue":
+        levels = np.arange(-1.4, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+    else:
+        levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
+    zpatch = ndimage.zoom(patch, 4)
+    X = np.linspace(0, patch.shape[0]-1, len(zpatch))
+    plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels)
+    # plt.contour(np.log10(np.abs(patch)), levels=levels)
+    ax = plt.gca()
+    # ax.set_axis_off()
+    ax.autoscale(False)
+    plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
+    extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
+    plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
+                bbox_inches=extent)
+    plt.show()
+    plt.close()
 else:
-    levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
-zpatch = ndimage.zoom(patch, 4)
-X = np.linspace(0, patch.shape[0]-1, len(zpatch))
-plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels)
-# plt.contour(np.log10(np.abs(patch)), levels=levels)
-ax = plt.gca()
-# ax.set_axis_off()
-ax.autoscale(False)
-plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
-extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
-plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
-            bbox_inches=extent)
-plt.show()
-plt.close()
-
-if args.binsize:
-    r, prof, err = pmap.radprof(binsize=args.binsize)
-    np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
-                args.band, args.binsize)),
+    # average orthogonal scans
+    pmap = Pacsmap(args.obsid, size=60)
+    pmap.add(Pacsmap(args.obsid+1, size=60))
+    pmap.shift(size=40)
+    patch = pmap.patch
+    fov = patch.shape[0]/2
+    center = (fov+pmap.sh[1], fov+pmap.sh[0])
+    if args.binsize:
+        r, prof, err = pmap.radprof(binsize=args.binsize, center=center)
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+                    args.band, args.binsize)),
+                    np.transpose((r, prof, err)))
+        plt.errorbar(r, prof, yerr=err, fmt='o')
+        for i in range(0, 60, args.binsize):
+            plt.axvline(x=i, linestyle='--')
+    r, prof, err = pmap.radprof(center=center)
+    plt.scatter(r, prof, marker='x')
+    np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
+                args.band)),
                 np.transpose((r, prof, err)))
-    plt.errorbar(r, prof, yerr=err, fmt='o')
-    for i in range(0, 30, args.binsize):
-        plt.axvline(x=i, linestyle='--')
-r, prof, err = pmap.radprof()
-plt.scatter(r, prof, marker='x')
-ax = plt.gca()
-# ax.set_yscale('log')
-# ax.set_xscale('log')
-plt.xlim(0, 30)
-# plt.ylim(1e-2, 0.4)
-plt.show()
+    ax = plt.gca()
+#     ax.set_yscale('log')
+    # ax.set_xscale('log')
+    plt.xlim(0, 40)
+#     plt.ylim(1e-5)
+    plt.show()
