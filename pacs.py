@@ -58,9 +58,10 @@ class Pacsmap(object):
         # shift array to center on comet nucleus
         pmap = ndimage.interpolation.shift(pmap, sh[::-1])
         self.pix = np.abs(self.cdelt2)
-        fov = int(round(40/self.pix))
+        self.fov = int(round(60/self.pix))
         # patch with 2fovx2fov
-        self.patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
+        self.patch = pmap[com[1]-self.fov:com[1]+self.fov+1,
+                          com[0]-self.fov:com[0]+self.fov+1]
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
@@ -82,12 +83,13 @@ class Pacsmap(object):
             plt.scatter(*mapcom[::-1], color='r')
             plt.show()
             plt.close()
-        self.com = [int(round(i)) for i in mapcom]
-        self.sh  = np.array(mapcom)-self.com
+        com = [int(round(i)) for i in mapcom]
+        self.comet = [self.fov-com[0], self.fov-com[1]]
+        self.sh  = np.array(mapcom)-com
 #         self.patch = ndimage.interpolation.shift(self.patch, sh)
-        fov = int(round(30/self.pix))
-        self.patch = self.patch[self.com[0]-fov:self.com[0]+fov+1,
-                                self.com[1]-fov:self.com[1]+fov+1]
+        self.fov = int(round(30/self.pix))
+        self.patch = self.patch[com[0]-self.fov:com[0]+self.fov+1,
+                                com[1]-self.fov:com[1]+self.fov+1]
 
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
@@ -120,13 +122,10 @@ pmap.add(Pacsmap(args.obsid+1))
 pmap.shift()
 patch = pmap.patch
 
-if args.debug:
-    plt.plot(patch.flat)
-    plt.show()
 plt.imshow(patch, origin="lower")# interpolation="bicubic")
 plt.colorbar()
 fov = patch.shape[0]/2
-# plt.scatter(fov, fov)
+plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
 plt.title('{0} {1}'.format(args.obsid, args.band))
 if args.band == "blue":
     levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
