@@ -32,7 +32,7 @@ class Pacsmap(object):
         self.cdelt2 = self.hdus[1].header['CDELT2']*3600
 
         # swap to little-endian byte order to avoid matplotlib bug
-        pmap = self.hdus[1].data.byteswap().newbyteorder()
+        pmap = self.hdus[1].data
         # calculate comet position at midtime
         date_obs = self.hdus[0].header['DATE-OBS']
         date_end = self.hdus[0].header['DATE-END']
@@ -55,32 +55,39 @@ class Pacsmap(object):
         comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
         com = [int(round(i)) for i in comet]
         sh  = comet-com
+        # shift array to center on comet nucleus
         pmap = ndimage.interpolation.shift(pmap, sh[::-1])
-        pix = np.abs(self.cdelt2)
-        fov = int(round(40/pix))
+        self.pix = np.abs(self.cdelt2)
+        fov = int(round(40/self.pix))
+        # patch with 2fovx2fov
         self.patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
             plt.scatter(*comet)
-            # plot max position
-            mapmax = np.unravel_index(np.argmax(pmap), pmap.shape)[::-1]
-            plt.scatter(*mapmax)
-            # plot center-of-mass
-            mapcom = ndimage.measurements.center_of_mass(pmap)[::-1]
-            plt.scatter(*mapcom, color='r')
             plt.show()
             plt.close()
 
     def shift(self):
-        plt.imshow(self.patch, origin="lower")
-        mapmax = ndimage.measurements.maximum_position(self.patch)[::-1]
-        plt.scatter(*mapmax)
-        # plot center-of-mass
-        mapcom = ndimage.measurements.maximum_position(self.patch)[::-1]
-        plt.scatter(*mapcom, color='k')
-        plt.show()
-        plt.close()
+        # select the top 0.99% pixels to calculate the center of mass
+        hist, bins = np.histogram(self.patch.ravel(), normed=True, bins=100)
+        threshold = bins[np.cumsum(hist) * (bins[1] - bins[0]) > 0.992][0]
+        mpatch = np.ma.masked_less(self.patch, threshold)
+        mapcom = ndimage.measurements.center_of_mass(mpatch)
+        if args.debug:
+            plt.imshow(self.patch, origin="lower")
+            mapmax = ndimage.measurements.maximum_position(self.patch)[::-1]
+            plt.scatter(*mapmax)
+            # plot center-of-mass
+            plt.scatter(*mapcom[::-1], color='r')
+            plt.show()
+            plt.close()
+        self.com = [int(round(i)) for i in mapcom]
+        self.sh  = np.array(mapcom)-self.com
+#         self.patch = ndimage.interpolation.shift(self.patch, sh)
+        fov = int(round(30/self.pix))
+        self.patch = self.patch[self.com[0]-fov:self.com[0]+fov+1,
+                                self.com[1]-fov:self.com[1]+fov+1]
 
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
@@ -110,12 +117,13 @@ class Pacsmap(object):
 # average orthogonal scans
 pmap = Pacsmap(args.obsid)
 pmap.add(Pacsmap(args.obsid+1))
+pmap.shift()
 patch = pmap.patch
 
 if args.debug:
     plt.plot(patch.flat)
     plt.show()
-plt.imshow(patch, origin="lower", cmap=cm.gist_heat_r)
+plt.imshow(patch, origin="lower")# interpolation="bicubic")
 plt.colorbar()
 fov = patch.shape[0]/2
 # plt.scatter(fov, fov)
@@ -124,7 +132,7 @@ if args.band == "blue":
     levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
 else:
     levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
-plt.contour(np.log10(np.abs(patch)), levels=levels, colors='g')
+plt.contour(np.log10(np.abs(patch)), levels=levels)
 ax = plt.gca()
 ax.set_axis_off()
 extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
@@ -133,14 +141,15 @@ plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
 plt.show()
 plt.close()
 
-r, prof, err = pmap.radprof(binsize=args.binsize)
-np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
-            args.band, args.binsize)),
-            np.transpose((r, prof, err)))
-plt.errorbar(r, prof, yerr=err, fmt='o')
+if args.binsize:
+    r, prof, err = pmap.radprof(binsize=args.binsize)
+    np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+                args.band, args.binsize)),
+                np.transpose((r, prof, err)))
+    plt.errorbar(r, prof, yerr=err, fmt='o')
+    for i in range(0, 30, args.binsize):
+        plt.axvline(x=i, linestyle='--')
 r, prof, err = pmap.radprof()
-for i in range(0, 30, args.binsize):
-    plt.axvline(x=i, linestyle='--')
 plt.scatter(r, prof, marker='x')
 ax = plt.gca()
 # ax.set_yscale('log')
