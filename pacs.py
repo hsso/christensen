@@ -100,14 +100,12 @@ class Pacsmap(object):
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
             rind = np.append([0], rind+1)
-            nr = rind[1:] - rind[:-1]
             error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
-            csim = np.cumsum(sim)
-            tbin = np.append(csim[rind[1]-1], csim[rind[2:]-1] - csim[rind[1:-1]-1])
-            rprof = tbin/nr
-            return binsize*(np.arange(len(rprof))+0.5), rprof, error
+            rprof = [np.mean(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
+            rad = binsize*(np.unique(ri)[:-1] + 0.5)
+            return rad, rprof, error
         else:
-            return sr, sim, np.zeroes(len(sr))
+            return sr, sim, np.zeros(len(sr))
 
 # average orthogonal scans
 pmap = Pacsmap(args.obsid)
@@ -135,11 +133,15 @@ plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
 plt.show()
 plt.close()
 
-r, prof, error = pmap.radprof(binsize=args.binsize)
+r, prof, err = pmap.radprof(binsize=args.binsize)
 np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
             args.band, args.binsize)),
-            np.transpose((r, prof, error)))
-plt.scatter(r, prof)
+            np.transpose((r, prof, err)))
+plt.errorbar(r, prof, yerr=err, fmt='o')
+r, prof, err = pmap.radprof()
+for i in range(0, 30, args.binsize):
+    plt.axvline(x=i, linestyle='--')
+plt.scatter(r, prof, marker='x')
 ax = plt.gca()
 # ax.set_yscale('log')
 # ax.set_xscale('log')
