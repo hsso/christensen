@@ -122,18 +122,22 @@ pmap.add(Pacsmap(args.obsid+1))
 pmap.shift()
 patch = pmap.patch
 
-plt.imshow(patch, origin="lower")# interpolation="bicubic")
+plt.imshow(patch, origin="lower", interpolation=None)
 plt.colorbar()
 fov = patch.shape[0]/2
-plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
 plt.title('{0} {1}'.format(args.obsid, args.band))
 if args.band == "blue":
-    levels = np.arange(-1.4, 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
+    levels = np.arange(-1.4, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
 else:
     levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
-plt.contour(np.log10(np.abs(patch)), levels=levels)
+zpatch = ndimage.zoom(patch, 4)
+X = np.linspace(0, patch.shape[0]-1, len(zpatch))
+plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels)
+# plt.contour(np.log10(np.abs(patch)), levels=levels)
 ax = plt.gca()
-ax.set_axis_off()
+# ax.set_axis_off()
+ax.autoscale(False)
+plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
 extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
 plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
             bbox_inches=extent)
