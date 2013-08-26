@@ -74,10 +74,10 @@ class Pacsmap(object):
 
     def shift(self):
         plt.imshow(self.patch, origin="lower")
-        mapmax = np.unravel_index(np.argmax(self.patch), self.patch.shape)[::-1]
+        mapmax = ndimage.measurements.maximum_position(self.patch)[::-1]
         plt.scatter(*mapmax)
         # plot center-of-mass
-        mapcom = ndimage.measurements.center_of_mass(self.patch)[::-1]
+        mapcom = ndimage.measurements.maximum_position(self.patch)[::-1]
         plt.scatter(*mapcom, color='k')
         plt.show()
         plt.close()
