@@ -57,7 +57,7 @@ class Pacsmap(object):
         sh  = comet-com
         pmap = ndimage.interpolation.shift(pmap, sh[::-1])
         pix = np.abs(self.cdelt2)
-        fov = int(round(60/pix))
+        fov = int(round(40/pix))
         self.patch = pmap[com[1]-fov:com[1]+fov+1, com[0]-fov:com[0]+fov+1]
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
@@ -94,14 +94,16 @@ class Pacsmap(object):
         sr = r.flat[ind]
         sim = self.patch.flat[ind]
         if binsize:
+            sr /= binsize
             ri = sr.astype(np.int16)
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
+            print rind
             nr = rind[1:] - rind[:-1]
             csim = np.cumsum(sim)
             tbin = csim[rind[1:]] - csim[rind[:-1]]
             rprof = tbin/nr
-            return range(len(rprof)), rprof
+            return binsize*(np.arange(len(rprof))+0.5), rprof
         else:
             return sr, sim
 
