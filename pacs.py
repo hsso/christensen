@@ -44,7 +44,7 @@ class Pacsmap(object):
         dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
         # calculate direction toward the Sun
         phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
-        alpha = np.pi/2 + phase_ang*np.pi/180
+        alpha = 3*np.pi/2 - phase_ang*np.pi/180
         cos, sin = np.cos(alpha), np.sin(alpha)
         print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
                 "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
@@ -126,22 +126,22 @@ if not args.profile:
     pmap.add(Pacsmap(args.obsid+1))
     pmap.shift()
     patch = pmap.patch
-    plt.imshow(patch, origin="lower", interpolation=None)
+    plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
     plt.colorbar()
     fov = patch.shape[0]/2
     plt.title('{0} {1}'.format(args.obsid, args.band))
     if args.band == "blue":
-        levels = np.arange(-1.4, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+        levels = np.arange(-1.3, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
     else:
-        levels = np.arange(-1., 0.1, 0.1) + .99*np.log10(np.abs(patch)).max()
+        levels = np.arange(-0.8, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
     zpatch = ndimage.zoom(patch, 4)
     X = np.linspace(0, patch.shape[0]-1, len(zpatch))
-    plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels)
+    plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels, zorder=1)
     # plt.contour(np.log10(np.abs(patch)), levels=levels)
     ax = plt.gca()
-    # ax.set_axis_off()
+    ax.set_axis_off()
     ax.autoscale(False)
-    plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='x', color='k')
+    plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='o', color='y')
     extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
     plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
                 bbox_inches=extent)
