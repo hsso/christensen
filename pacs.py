@@ -123,13 +123,31 @@ class Pacsmap(object):
             error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
             error = np.where(np.array(rprof) > np.array(error), error, 0.99*np.array(rprof))
             rad = binsize*(np.unique(ri)[:-1] + 0.5)
-            return rad, rprof, error
+            return rad, np.array(rprof), np.array(error)
         else:
             return sr, sim, np.zeros(len(sr))
 
 if args.psf:
     pmap = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
-    plt.imshow(pmap.patch)
+    plt.imshow(pmap.patch, origin="lower")
+    fov = pmap.patch.shape[0]/2
+    plt.scatter(fov,fov)
+    plt.show()
+    if args.binsize:
+        r, prof, err = pmap.radprof(binsize=args.binsize, center=(fov,fov))
+        mask = [r<41]
+        plt.errorbar(r[mask], prof[mask], yerr=err[mask], fmt='x', color="g")
+        for i in np.arange(0, 40, args.binsize):
+            plt.axvline(x=i, linestyle='--')
+        np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
+                args.binsize)),
+                np.transpose((r[mask], prof[mask], err[mask])))
+    r, prof, err = pmap.radprof(center=(fov,fov))
+    mask = [r<41]
+    plt.scatter(r[mask], prof[mask], marker='x', color=args.band)
+    ax = plt.gca()
+    ax.set_yscale('log')
+    plt.xlim(0,40)
     plt.show()
 elif args.profile:
     # average orthogonal scans
