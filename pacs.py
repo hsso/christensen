@@ -7,7 +7,7 @@ from os.path import join
 import glob
 import pywcs
 import argparse
-from christensen import datadir, figsdir, horizons_file
+from christensen import datadir, figsdir, horizons_file, psfdir, psf_vesta
 import matplotlib.cm as cm
 from scipy import ndimage
 from datetime import datetime
@@ -20,48 +20,55 @@ parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
 parser.add_argument('--profile', action="store_true", help="radial profile")
+parser.add_argument('--psf', action="store_true", help="PSF profile")
 parser.add_argument('--binsize', default=0, type=float, help="bin size")
 args = parser.parse_args()
 
 class Pacsmap(object):
-    def __init__(self, obsid, size=60, zoom=0):
+    def __init__(self, obsid, size=60, zoom=0, comet=True):
         """return patch centered on the nucleus"""
-        self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
-            'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
+        if isinstance(obsid, int):
+            self.fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
+                'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
+        else:
+            self.fitsfile = obsid
         self.hdus = pyfits.open(self.fitsfile)
         self.cdelt2 = self.hdus[1].header['CDELT2']*3600
 
         # swap to little-endian byte order to avoid matplotlib bug
         pmap = self.hdus[1].data
-        # calculate comet position at midtime
-        date_obs = self.hdus[0].header['DATE-OBS']
-        date_end = self.hdus[0].header['DATE-END']
-        start = datetime.strptime(date_obs[:20], "%Y-%m-%dT%H:%M:%S.")
-        end = datetime.strptime(date_end[:20], "%Y-%m-%dT%H:%M:%S.")
-        mid_time = start + (end-start)/2
-        # interpolate ra and dec of the comet
-        ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
-        dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
-        # calculate direction toward the Sun
-        phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
-        alpha = 3*np.pi/2 - phase_ang*np.pi/180
-        cos, sin = np.cos(alpha), np.sin(alpha)
-        print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
-                "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
-        print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
-                        25*sin))
-        # origin coordinate is 0 (Numpy and C standards)
-        wcs = pywcs.WCS(self.hdus[1].header)
-        comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
-        com = [int(round(i)) for i in comet]
-        sh  = comet-com
-        # shift array to center on comet nucleus
-        pmap = ndimage.interpolation.shift(pmap, sh[::-1])
-        self.pix = np.abs(self.cdelt2)
-        self.fov = int(round(size/self.pix))
-        # patch with 2fovx2fov
-        self.patch = pmap[com[1]-self.fov:com[1]+self.fov+1,
-                          com[0]-self.fov:com[0]+self.fov+1]
+        if comet:
+            # calculate comet position at midtime
+            date_obs = self.hdus[0].header['DATE-OBS']
+            date_end = self.hdus[0].header['DATE-END']
+            start = datetime.strptime(date_obs[:20], "%Y-%m-%dT%H:%M:%S.")
+            end = datetime.strptime(date_end[:20], "%Y-%m-%dT%H:%M:%S.")
+            mid_time = start + (end-start)/2
+            # interpolate ra and dec of the comet
+            ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
+            dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
+            # calculate direction toward the Sun
+            phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
+            alpha = 3*np.pi/2 - phase_ang*np.pi/180
+            cos, sin = np.cos(alpha), np.sin(alpha)
+            print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
+                    "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
+            print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
+                            25*sin))
+            # origin coordinate is 0 (Numpy and C standards)
+            wcs = pywcs.WCS(self.hdus[1].header)
+            comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
+            com = [int(round(i)) for i in comet]
+            sh  = comet-com
+            # shift array to center on comet nucleus
+            pmap = ndimage.interpolation.shift(pmap, sh[::-1])
+            self.pix = np.abs(self.cdelt2)
+            self.fov = int(round(size/self.pix))
+            # patch with 2fovx2fov
+            self.patch = pmap[com[1]-self.fov:com[1]+self.fov+1,
+                              com[0]-self.fov:com[0]+self.fov+1]
+        else:
+            self.patch = pmap
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
@@ -120,34 +127,11 @@ class Pacsmap(object):
         else:
             return sr, sim, np.zeros(len(sr))
 
-if not args.profile:
-    # average orthogonal scans
-    pmap = Pacsmap(args.obsid)
-    pmap.add(Pacsmap(args.obsid+1))
-    pmap.shift()
-    patch = pmap.patch
-    plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
-    plt.colorbar()
-    fov = patch.shape[0]/2
-    plt.title('{0} {1}'.format(args.obsid, args.band))
-    if args.band == "blue":
-        levels = np.arange(-1.3, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
-    else:
-        levels = np.arange(-0.8, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
-    zpatch = ndimage.zoom(patch, 4)
-    X = np.linspace(0, patch.shape[0]-1, len(zpatch))
-    plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels, zorder=1)
-    # plt.contour(np.log10(np.abs(patch)), levels=levels)
-    ax = plt.gca()
-    ax.set_axis_off()
-    ax.autoscale(False)
-    plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='o', color='y')
-    extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
-    plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
-                bbox_inches=extent)
+if args.psf:
+    pmap = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
+    plt.imshow(pmap.patch)
     plt.show()
-    plt.close()
-else:
+elif args.profile:
     # average orthogonal scans
     pmap = Pacsmap(args.obsid, size=60)
     pmap.add(Pacsmap(args.obsid+1, size=60))
@@ -173,4 +157,30 @@ else:
     # ax.set_xscale('log')
     plt.xlim(0, 40)
 #     plt.ylim(1e-5)
+    plt.show()
+else:
+    # average orthogonal scans
+    pmap = Pacsmap(args.obsid)
+    pmap.add(Pacsmap(args.obsid+1))
+    pmap.shift()
+    patch = pmap.patch
+    plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
+    plt.colorbar()
+    fov = patch.shape[0]/2
+    plt.title('{0} {1}'.format(args.obsid, args.band))
+    if args.band == "blue":
+        levels = np.arange(-1.3, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+    else:
+        levels = np.arange(-0.8, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+    zpatch = ndimage.zoom(patch, 4)
+    X = np.linspace(0, patch.shape[0]-1, len(zpatch))
+    plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels, zorder=1)
+    # plt.contour(np.log10(np.abs(patch)), levels=levels)
+    ax = plt.gca()
+    ax.set_axis_off()
+    ax.autoscale(False)
+    plt.scatter(fov+pmap.comet[1], fov+pmap.comet[0], marker='o', color='y')
+    extent = ax.get_window_extent().transformed(plt.gcf().dpi_scale_trans.inverted())
+    plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
+                bbox_inches=extent)
     plt.show()
