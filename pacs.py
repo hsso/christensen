@@ -20,7 +20,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
 parser.add_argument('--profile', action="store_true", help="radial profile")
-parser.add_argument('--binsize', default=0, type=int, help="bin size")
+parser.add_argument('--binsize', default=0, type=float, help="bin size")
 args = parser.parse_args()
 
 class Pacsmap(object):
@@ -112,8 +112,9 @@ class Pacsmap(object):
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
             rind = np.append([0], rind+1)
-            error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
             rprof = [np.mean(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
+            error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
+            error = np.where(np.array(rprof) > np.array(error), error, 0.99*np.array(rprof))
             rad = binsize*(np.unique(ri)[:-1] + 0.5)
             return rad, rprof, error
         else:
@@ -160,10 +161,10 @@ else:
                     args.band, args.binsize)),
                     np.transpose((r, prof, err)))
         plt.errorbar(r, prof, yerr=err, fmt='o')
-        for i in range(0, 60, args.binsize):
+        for i in np.arange(0, 60, args.binsize):
             plt.axvline(x=i, linestyle='--')
     r, prof, err = pmap.radprof(center=center)
-    plt.scatter(r, prof, marker='x')
+    plt.scatter(r, prof, marker='x', color='red')
     np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
                 args.band)),
                 np.transpose((r, prof, err)))
