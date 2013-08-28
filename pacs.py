@@ -22,6 +22,7 @@ parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
 parser.add_argument('--profile', action="store_true", help="radial profile")
 parser.add_argument('--psf', action="store_true", help="PSF profile")
+parser.add_argument('--save', action="store_true", help="save profile")
 parser.add_argument('--binsize', default=0, type=float, help="bin size")
 parser.add_argument('--rmax', default=0, type=int, help="radial profile extent")
 args = parser.parse_args()
@@ -121,6 +122,8 @@ class Pacsmap(object):
         r *= self.cdelt2
         sr = r.flat[ind]
         sim = self.patch.flat[ind]
+        sr = sr[sim >0]
+        sim = sim[sim >0]
         if binsize:
             sr /= binsize
             ri = sr.astype(np.int16)
@@ -131,7 +134,7 @@ class Pacsmap(object):
                                     zip(rind[:-1], rind[1:])])
             self.rprof_e = np.array([np.std(sim[lo:hi]) for lo,hi in
                                     zip(rind[:-1], rind[1:])])
-            self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e, 0.99*self.rprof)
+#             self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e, 0.99*self.rprof)
             self.rad = binsize*(np.unique(ri)[:-1] + 0.5)
         else:
             self.rad = sr
@@ -146,8 +149,13 @@ class Pacsmap(object):
 def mirror(arr, sign=1):
     return np.append(sign*arr[::-1], arr)
 
-psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
+psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
+                size=np.max((60, args.rmax)))
 fov = psf.patch.shape[0]/2
+psf.radprof(center=(fov,fov), rmax=args.rmax)
+plt.scatter(psf.rad, psf.rprof, marker='x', color=args.band)
+ax = plt.gca()
+ax.set_yscale('log')
 if args.debug:
     plt.imshow(psf.patch, origin="lower")
     plt.scatter(fov,fov)
@@ -155,48 +163,47 @@ if args.debug:
 if args.binsize:
     psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=args.rmax)
     plt.errorbar(psf.rad, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
-    for i in np.arange(0, 40, args.binsize):
+    for i in np.arange(0, args.rmax, args.binsize):
         plt.axvline(x=i, linestyle='--')
     np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_psfprof.dat'.format(args.band,
             args.binsize)),
             np.transpose((psf.rad, psf.rprof, psf.rprof_e)))
     plt.scatter(mirror(psf.rad, sign=-1), mirror(psf.rprof), marker='x', color="g")
-psf.radprof(center=(fov,fov), rmax=args.rmax)
-plt.scatter(psf.rad, psf.rprof, marker='x', color=args.band)
-ax = plt.gca()
-ax.set_yscale('log')
 # plt.xlim(0,40)
 # plt.show()
 
 if args.profile:
     # average orthogonal scans
-    pmap = Pacsmap(args.obsid, size=60)
-    pmap.add(Pacsmap(args.obsid+1, size=60))
-    pmap.shift(size=40)
+    pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
+    pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
+    pmap.shift(size=np.max((40, args.rmax)))
     patch = pmap.patch
     fov = patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
     if args.binsize:
         pmap.radprof(binsize=args.binsize, center=center, rmax=args.rmax)
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+        if args.save:
+            np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
                     args.band, args.binsize)),
                     np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
         plt.errorbar(pmap.rad, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
-        for i in np.arange(0, 60, args.binsize):
+        for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-    prof_decon, error = signal.deconvolve(mirror(pmap.rprof), mirror(psf.rprof))
-    print prof_decon
-#     prof_con = signal.convolve(r[:50]**-1.05, psfprof[:50])
-#     plt.plot(prof[1]/prof_con[1]*prof_con)
+#     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), mirror(psf.rprof))
+    prof_con = signal.convolve(mirror(pmap.rad)**-1.05, mirror(psf.rprof),
+                                mode="same")
+    plt.plot(mirror(pmap.rad, sign=-1)-args.binsize*.5,
+                    pmap.rprof[0]*prof_con, color="red")
     plt.scatter(mirror(pmap.rad, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     pmap.radprof(center=center, rmax=args.rmax)
     plt.scatter(pmap.rad, pmap.rprof, marker='x', color=args.band)
-    np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
+    if args.save:
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
                 args.band)),
                 np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
 #     ax.set_yscale('log')
-    plt.xlim(-args.rmax, args.rmax)
+    if args.rmax: plt.xlim(-args.rmax, args.rmax)
 #     plt.ylim(1e-5)
     plt.show()
 else:
