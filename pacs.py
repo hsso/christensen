@@ -108,7 +108,7 @@ class Pacsmap(object):
     def add(self, pmap):
         self.patch = np.average((self.patch, pmap.patch), axis=0)
 
-    def radprof(self, center=None, binsize=0):
+    def radprof(self, center=None, binsize=0, rmax=None):
         """calculate radial profile"""
         y, x = np.indices(self.patch.shape)
         if center:
@@ -126,13 +126,21 @@ class Pacsmap(object):
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
             rind = np.append([0], rind+1)
-            rprof = [np.mean(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
-            error = [np.std(sim[lo:hi]) for lo,hi in zip(rind[:-1], rind[1:])]
-            error = np.where(np.array(rprof) > np.array(error), error, 0.99*np.array(rprof))
-            rad = binsize*(np.unique(ri)[:-1] + 0.5)
-            return rad, np.array(rprof), np.array(error)
+            self.rprof = np.array([np.mean(sim[lo:hi]) for lo,hi in
+                                    zip(rind[:-1], rind[1:])])
+            self.rprof_e = np.array([np.std(sim[lo:hi]) for lo,hi in
+                                    zip(rind[:-1], rind[1:])])
+            self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e, 0.99*self.rprof)
+            self.rad = binsize*(np.unique(ri)[:-1] + 0.5)
         else:
-            return sr, sim, np.zeros(len(sr))
+            self.rad = sr
+            self.rprof = sim
+            self.rprof_e = np.zeros(len(sr))
+        if rmax:
+            mask = [self.rad < rmax]
+            self.rad = self.rad[mask]
+            self.rprof = self.rprof[mask]
+            self.rprof_e = self.rprof_e[mask]
 
 psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
 fov = psf.patch.shape[0]/2
@@ -141,27 +149,20 @@ if args.debug:
     plt.scatter(fov,fov)
     plt.show()
 if args.binsize:
-    r, psfprof, err = psf.radprof(binsize=args.binsize, center=(fov,fov))
-    mask = [r<41]
-    plt.errorbar(r[mask], psfprof[mask], yerr=err[mask], fmt='x', color="g")
+    psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=41)
+    plt.errorbar(psf.rad, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
     for i in np.arange(0, 40, args.binsize):
         plt.axvline(x=i, linestyle='--')
     np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_psfprof.dat'.format(args.band,
             args.binsize)),
-            np.transpose((r[mask], psfprof[mask], err[mask])))
-p0 = (1e-2, 4, 1e-2, 6, 4)
-mask = [r<12]
-coeff, var = curve_fit(_double_gauss, r[mask], psfprof[mask], p0=p0)
-#             sigma=err[mask])
-yfit = _double_gauss(r[mask], *coeff)
-plt.plot(r[mask], yfit, 'r')
-r, prof, err = psf.radprof(center=(fov,fov))
-mask = [r<41]
-plt.scatter(r[mask], prof[mask], marker='x', color=args.band)
+            np.transpose((psf.rad, psf.rprof, psf.rprof_e)))
+psf.radprof(center=(fov,fov), rmax=41)
+plt.scatter(psf.rad, psf.rprof, marker='x', color=args.band)
 ax = plt.gca()
 ax.set_yscale('log')
 plt.xlim(0,40)
 plt.show()
+
 if args.profile:
     # average orthogonal scans
     pmap = Pacsmap(args.obsid, size=60)
@@ -171,25 +172,24 @@ if args.profile:
     fov = patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
     if args.binsize:
-        r, prof, err = pmap.radprof(binsize=args.binsize, center=center)
+        pmap.radprof(binsize=args.binsize, center=center)
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
                     args.band, args.binsize)),
-                    np.transpose((r, prof, err)))
-        plt.errorbar(r, prof, yerr=err, fmt='o')
+                    np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
+        plt.errorbar(pmap.rad, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, 60, args.binsize):
             plt.axvline(x=i, linestyle='--')
-    prof_decon, error = signal.deconvolve(prof[:50], psfprof[:50])
-    prof_con = signal.convolve(r[:50]**-1.05, psfprof[:50])
-    plt.plot(prof[1]/prof_con[1]*prof_con)
+#     prof_decon, error = signal.deconvolve(prof[:50], psfprof[:50])
+#     prof_con = signal.convolve(r[:50]**-1.05, psfprof[:50])
+#     plt.plot(prof[1]/prof_con[1]*prof_con)
 #     plt.scatter(r[:50], prof_decon[:50], marker='x', color='green')
-    r, prof, err = pmap.radprof(center=center)
-    plt.scatter(r, prof, marker='x', color='red')
+    pmap.radprof(center=center)
+    plt.scatter(pmap.rad, pmap.rprof, marker='x', color=args.band)
     np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
                 args.band)),
-                np.transpose((r, prof, err)))
+                np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
 #     ax.set_yscale('log')
-    # ax.set_xscale('log')
     plt.xlim(0, 40)
 #     plt.ylim(1e-5)
     plt.show()
@@ -197,7 +197,7 @@ else:
     # average orthogonal scans
     pmap = Pacsmap(args.obsid)
     pmap.add(Pacsmap(args.obsid+1))
-    pmap.shift()
+    pmap.shift(size=30)
     patch = pmap.patch
     plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
     plt.colorbar()
