@@ -27,11 +27,21 @@ parser.add_argument('--binsize', default=0, type=float, help="bin size")
 parser.add_argument('--rmax', default=0, type=int, help="radial profile extent")
 args = parser.parse_args()
 
+def mirror(arr, sign=1):
+    return np.append(sign*arr[::-1], arr)
+
 def _double_gauss(x, *p):
     """Gaussian fitting"""
     gauss1 = p[0]*stats.norm.pdf(x, 0, p[1])
     gauss2 = p[2]*stats.norm.pdf(x, p[3], p[4])
     return gauss1+gauss2
+
+def _conv_prof(x, *p):
+    """convolved power law"""
+    prof_con = signal.convolve(p[0]*mirror(pmap.rad)**-p[1] + p[2], mirror(x),
+                                mode="same")
+    n = len(prof_con)/2
+    return prof_con[n:n+args.rmax]
 
 class Pacsmap(object):
     def __init__(self, obsid, size=60, zoom=0, comet=True):
@@ -146,9 +156,6 @@ class Pacsmap(object):
             self.rprof = self.rprof[mask]
             self.rprof_e = self.rprof_e[mask]
 
-def mirror(arr, sign=1):
-    return np.append(sign*arr[::-1], arr)
-
 psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
                 size=np.max((60, args.rmax)))
 fov = psf.patch.shape[0]/2
@@ -190,10 +197,12 @@ if args.profile:
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
 #     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), mirror(psf.rprof))
-    prof_con = signal.convolve(mirror(pmap.rad)**-1.05, mirror(psf.rprof),
-                                mode="same")
-    plt.plot(mirror(pmap.rad, sign=-1)-args.binsize*.5,
-                    pmap.rprof[0]*prof_con, color="red")
+    p0 = (pmap.rprof[0], 1.1, 1e-3)
+    popt, pcov = curve_fit(_conv_prof, psf.rprof, pmap.rprof, p0=p0,
+                            sigma=pmap.rprof_e)
+    conv_prof = _conv_prof(psf.rprof, *popt)
+    print popt
+    plt.plot(pmap.rad-args.binsize*.5, conv_prof, color="red")
     plt.scatter(mirror(pmap.rad, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     pmap.radprof(center=center, rmax=args.rmax)
     plt.scatter(pmap.rad, pmap.rprof, marker='x', color=args.band)
