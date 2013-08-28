@@ -9,7 +9,8 @@ import pywcs
 import argparse
 from christensen import datadir, figsdir, horizons_file, psfdir, psf_vesta
 import matplotlib.cm as cm
-from scipy import ndimage
+from scipy import ndimage, stats
+from scipy.optimize import curve_fit
 from datetime import datetime
 from hsso import gildas
 
@@ -23,6 +24,12 @@ parser.add_argument('--profile', action="store_true", help="radial profile")
 parser.add_argument('--psf', action="store_true", help="PSF profile")
 parser.add_argument('--binsize', default=0, type=float, help="bin size")
 args = parser.parse_args()
+
+def _double_gauss(x, *p):
+    """Gaussian fitting"""
+    gauss1 = p[0]*stats.norm.pdf(x, 0, p[1])
+    gauss2 = p[2]*stats.norm.pdf(x, p[3], p[4])
+    return gauss1+gauss2
 
 class Pacsmap(object):
     def __init__(self, obsid, size=60, zoom=0, comet=True):
@@ -142,6 +149,13 @@ if args.psf:
         np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
                 args.binsize)),
                 np.transpose((r[mask], prof[mask], err[mask])))
+    p0 = (1e-2, 4, 1e-2, 6, 4)
+    mask = [r<12]
+    coeff, var = curve_fit(_double_gauss, r[mask], prof[mask], p0=p0)
+#             sigma=err[mask])
+    print coeff
+    yfit = _double_gauss(r[mask], *coeff)
+    plt.plot(r[mask], yfit, 'r')
     r, prof, err = pmap.radprof(center=(fov,fov))
     mask = [r<41]
     plt.scatter(r[mask], prof[mask], marker='x', color=args.band)
