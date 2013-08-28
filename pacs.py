@@ -9,7 +9,7 @@ import pywcs
 import argparse
 from christensen import datadir, figsdir, horizons_file, psfdir, psf_vesta
 import matplotlib.cm as cm
-from scipy import ndimage, stats
+from scipy import ndimage, stats, signal
 from scipy.optimize import curve_fit
 from datetime import datetime
 from hsso import gildas
@@ -134,36 +134,35 @@ class Pacsmap(object):
         else:
             return sr, sim, np.zeros(len(sr))
 
-if args.psf:
-    pmap = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
-    plt.imshow(pmap.patch, origin="lower")
-    fov = pmap.patch.shape[0]/2
+psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False)
+fov = psf.patch.shape[0]/2
+if args.debug:
+    plt.imshow(psf.patch, origin="lower")
     plt.scatter(fov,fov)
     plt.show()
-    if args.binsize:
-        r, prof, err = pmap.radprof(binsize=args.binsize, center=(fov,fov))
-        mask = [r<41]
-        plt.errorbar(r[mask], prof[mask], yerr=err[mask], fmt='x', color="g")
-        for i in np.arange(0, 40, args.binsize):
-            plt.axvline(x=i, linestyle='--')
-        np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
-                args.binsize)),
-                np.transpose((r[mask], prof[mask], err[mask])))
-    p0 = (1e-2, 4, 1e-2, 6, 4)
-    mask = [r<12]
-    coeff, var = curve_fit(_double_gauss, r[mask], prof[mask], p0=p0)
-#             sigma=err[mask])
-    print coeff
-    yfit = _double_gauss(r[mask], *coeff)
-    plt.plot(r[mask], yfit, 'r')
-    r, prof, err = pmap.radprof(center=(fov,fov))
+if args.binsize:
+    r, psfprof, err = psf.radprof(binsize=args.binsize, center=(fov,fov))
     mask = [r<41]
-    plt.scatter(r[mask], prof[mask], marker='x', color=args.band)
-    ax = plt.gca()
-    ax.set_yscale('log')
-    plt.xlim(0,40)
-    plt.show()
-elif args.profile:
+    plt.errorbar(r[mask], psfprof[mask], yerr=err[mask], fmt='x', color="g")
+    for i in np.arange(0, 40, args.binsize):
+        plt.axvline(x=i, linestyle='--')
+    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_psfprof.dat'.format(args.band,
+            args.binsize)),
+            np.transpose((r[mask], psfprof[mask], err[mask])))
+p0 = (1e-2, 4, 1e-2, 6, 4)
+mask = [r<12]
+coeff, var = curve_fit(_double_gauss, r[mask], psfprof[mask], p0=p0)
+#             sigma=err[mask])
+yfit = _double_gauss(r[mask], *coeff)
+plt.plot(r[mask], yfit, 'r')
+r, prof, err = psf.radprof(center=(fov,fov))
+mask = [r<41]
+plt.scatter(r[mask], prof[mask], marker='x', color=args.band)
+ax = plt.gca()
+ax.set_yscale('log')
+plt.xlim(0,40)
+plt.show()
+if args.profile:
     # average orthogonal scans
     pmap = Pacsmap(args.obsid, size=60)
     pmap.add(Pacsmap(args.obsid+1, size=60))
@@ -179,6 +178,10 @@ elif args.profile:
         plt.errorbar(r, prof, yerr=err, fmt='o')
         for i in np.arange(0, 60, args.binsize):
             plt.axvline(x=i, linestyle='--')
+    prof_decon, error = signal.deconvolve(prof[:50], psfprof[:50])
+    prof_con = signal.convolve(r[:50]**-1.05, psfprof[:50])
+    plt.plot(prof[1]/prof_con[1]*prof_con)
+#     plt.scatter(r[:50], prof_decon[:50], marker='x', color='green')
     r, prof, err = pmap.radprof(center=center)
     plt.scatter(r, prof, marker='x', color='red')
     np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
