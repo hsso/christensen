@@ -41,6 +41,7 @@ def _conv_prof(x, *p):
     prof_con = signal.convolve(p[0]*mirror(pmap.rad)**-p[1] + p[2], mirror(x),
                                 mode="same")
     n = len(prof_con)/2
+    prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5)
     return prof_con[n:n+args.rmax]
 
 class Pacsmap(object):
@@ -189,10 +190,6 @@ if args.profile:
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
     if args.binsize:
         pmap.radprof(binsize=args.binsize, center=center, rmax=args.rmax)
-        if args.save:
-            np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
-                    args.band, args.binsize)),
-                    np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
         plt.errorbar(pmap.rad, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
@@ -201,9 +198,12 @@ if args.profile:
     popt, pcov = curve_fit(_conv_prof, psf.rprof, pmap.rprof, p0=p0,
                             sigma=pmap.rprof_e)
     conv_prof = _conv_prof(psf.rprof, *popt)
-    print popt
-    plt.plot(pmap.rad-args.binsize*.5, conv_prof, color="red")
+    plt.plot(pmap.rad, conv_prof, color="red")
     plt.scatter(mirror(pmap.rad, sign=-1), mirror(pmap.rprof), marker='x', color='green')
+    if args.save:
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+                args.band, args.binsize)),
+                np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e, conv_prof)))
     pmap.radprof(center=center, rmax=args.rmax)
     plt.scatter(pmap.rad, pmap.rprof, marker='x', color=args.band)
     if args.save:
