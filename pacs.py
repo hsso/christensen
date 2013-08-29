@@ -13,6 +13,7 @@ from scipy import ndimage, stats, signal
 from scipy.optimize import curve_fit
 from datetime import datetime
 from hsso import gildas
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--obsid', default=1342186621, type=int,
@@ -173,12 +174,21 @@ if args.binsize:
     plt.errorbar(psf.rad, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
     for i in np.arange(0, args.rmax, args.binsize):
         plt.axvline(x=i, linestyle='--')
-    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_psfprof.dat'.format(args.band,
+    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
             args.binsize)),
             np.transpose((psf.rad, psf.rprof, psf.rprof_e)))
     plt.scatter(mirror(psf.rad, sign=-1), mirror(psf.rprof), marker='x', color="g")
-# plt.xlim(0,40)
-# plt.show()
+p0 = (1e-2, 4, 1e-2, 6, 4)
+coeff, var = curve_fit(_double_gauss, psf.rad, psf.rprof, p0=p0)
+#             sigma=err[mask])
+pickle.dump( coeff, open( "psf_{0}.p".format(args.band), "wb" ) )
+xfit = np.linspace(0, 40, 100)
+yfit = _double_gauss(xfit, *coeff)
+plt.plot(xfit, yfit, 'r')
+np.savetxt(join(datadir, 'ascii', 'PSF_{0}_gauss.dat'.format(args.band)),
+            np.transpose((xfit, yfit)))
+plt.xlim(0, args.rmax)
+plt.show()
 
 if args.profile:
     # average orthogonal scans
