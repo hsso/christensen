@@ -2,9 +2,12 @@ from os.path import expanduser, join
 
 basedir = expanduser('~/HssO/Christensen/')
 datadir = join(basedir, 'data')
+paperdir = join(basedir, 'paper')
 figsdir = join(basedir, 'paper', 'figures')
 
 freq0 = {'H2O': 556.9359877, 'NH3': 572.4980678}
+
+obsids = (1342186621, 1342186622, 1342203478, 1342203479, 1342204014)
 
 horizons_file = {1342186621: "horizons_2009.txt", 1342203478: "horizons_2010.txt"}
 
