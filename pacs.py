@@ -39,11 +39,14 @@ def _double_gauss(x, *p):
 
 def _conv_prof(x, *p):
     """convolved power law"""
-    prof_con = signal.convolve(p[0]*mirror(pmap.r)**-p[1] + p[2], mirror(x),
-                                mode="same")
+    prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1]+p[2]), mirror(x),
+                                mode="same") + mirror(p[3]*pmap.r)
     n = len(prof_con)/2
     prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5)
-    return prof_con[n:n+args.rmax]
+    if args.debug:
+        plt.plot(mirror(pmap.r, sign=-1), prof_con)
+        plt.plot(pmap.r, prof_con[n:])
+    return prof_con[n:]
 
 class Pacsmap(object):
     def __init__(self, obsid, size=60, zoom=0, comet=True):
@@ -93,7 +96,7 @@ class Pacsmap(object):
         if zoom: self.patch = ndimage.zoom(self.patch, zoom, order=2)
         if args.debug:
             plt.imshow(pmap, origin="lower")
-            plt.scatter(*comet)
+#             plt.scatter(*comet)
             plt.show()
             plt.close()
 
@@ -120,6 +123,7 @@ class Pacsmap(object):
                                 com[1]-self.fov:com[1]+self.fov+1]
 
     def add(self, pmap):
+        """average orthogonal scans"""
         self.patch = np.average((self.patch, pmap.patch), axis=0)
 
     def radprof(self, center=None, binsize=0, rmax=0):
@@ -187,11 +191,10 @@ yfit = _double_gauss(xfit, *coeff)
 plt.plot(xfit, yfit, 'r')
 np.savetxt(join(datadir, 'ascii', 'PSF_{0}_gauss.dat'.format(args.band)),
             np.transpose((xfit, yfit)))
-plt.xlim(0, args.rmax)
-plt.show()
+# plt.xlim(0, args.rmax)
+# plt.show()
 
 if args.profile:
-    # average orthogonal scans
     pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
     pmap.shift(size=np.max((40, args.rmax)))
@@ -203,32 +206,42 @@ if args.profile:
         plt.errorbar(pmap.r, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-    prof_decon, error = signal.deconvolve(mirror(pmap.rprof),
-                        _double_gauss(mirror(psf.r), *coeff))
-    print prof_decon
-    p0 = (pmap.rprof[0], 1.1, 1e-3)
-    popt, pcov = curve_fit(_conv_prof, psf.rprof, pmap.rprof, p0=p0,
-                            sigma=pmap.rprof_e)
-    conv_prof = _conv_prof(psf.rprof, *popt)
-    plt.plot(pmap.r, conv_prof, color="red")
+#     xx = mirror(pmap.r[:args.rmax/4], sign=-1)
+#     yy = mirror(_double_gauss(pmap.r[:args.rmax/4], *coeff))
+#     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), yy)
+#     print prof_decon, error
+#     plt.plot(xx, yy)
+    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-3)
+    popt, pcov = curve_fit(_conv_prof,
+#                             _double_gauss(psf.r, *coeff),
+                            psf.rprof,
+                            pmap.rprof, p0=p0,
+                            sigma=pmap.rprof_e
+                            )
+    conv_prof = _conv_prof(
+                        _double_gauss(psf.r, *coeff),
+#                         psf.rprof,
+                        *popt)
+    print popt, pcov
+    plt.plot(pmap.r, conv_prof, color="green", linestyle='--')
     plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     if args.save:
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
                 args.band, args.binsize)),
-                np.transpose((pmap.r, pmap.rprof, pmap.rprof_e, conv_prof)))
+                np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
+    # unbinned profile
     pmap.radprof(center=center, rmax=args.rmax)
-    plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
+#     plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
     if args.save:
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
                 args.band)),
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
-#     ax.set_yscale('log')
-    if args.rmax: plt.xlim(-args.rmax, args.rmax)
-#     plt.ylim(1e-5)
+    ax.set_yscale('log')
+    if args.rmax: plt.xlim(0, args.rmax)
+    plt.ylim(ymin=1e-6)
     plt.show()
 else:
-    # average orthogonal scans
     pmap = Pacsmap(args.obsid)
     pmap.add(Pacsmap(args.obsid+1))
     pmap.shift(size=30)
