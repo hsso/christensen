@@ -39,14 +39,24 @@ def _double_gauss(x, *p):
 
 def _conv_prof(x, *p):
     """convolved power law"""
-    prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1]+p[2]), mirror(x),
-                                mode="same") + mirror(p[3]*pmap.r)
+    prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1] + p[2]), mirror(x),
+                                mode="same")
+    prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5,
+                mode="nearest")
+    if len(p)>3: prof_con += mirror(p[3]*np.exp(p[4]*pmap.r))
     n = len(prof_con)/2
-    prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5)
     if args.debug:
         plt.plot(mirror(pmap.r, sign=-1), prof_con)
         plt.plot(pmap.r, prof_con[n:])
     return prof_con[n:]
+
+def pcov_sigma(x, popt, pcov, yn, sigma):
+    """http://nbviewer.ipython.org/5014170/"""
+    chi = (yn - _conv_prof(x, *popt)) / sigma
+    chi2 = (chi ** 2).sum()
+    dof = len(x) - len(popt)
+    factor = (chi2 / dof)
+    return pcov / factor
 
 class Pacsmap(object):
     def __init__(self, obsid, size=60, zoom=0, comet=True):
@@ -211,7 +221,7 @@ if args.profile:
 #     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), yy)
 #     print prof_decon, error
 #     plt.plot(xx, yy)
-    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-3)
+    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4, -.2)
     popt, pcov = curve_fit(_conv_prof,
 #                             _double_gauss(psf.r, *coeff),
                             psf.rprof,
@@ -219,11 +229,12 @@ if args.profile:
                             sigma=pmap.rprof_e
                             )
     conv_prof = _conv_prof(
-                        _double_gauss(psf.r, *coeff),
-#                         psf.rprof,
+#                         _double_gauss(psf.r, *coeff),
+                        psf.rprof,
                         *popt)
-    print popt, pcov
-    plt.plot(pmap.r, conv_prof, color="green", linestyle='--')
+    print popt, np.sqrt(pcov[1, 1])
+    print conv_prof
+    plt.plot(pmap.r, conv_prof, color="green")
     plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     if args.save:
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
