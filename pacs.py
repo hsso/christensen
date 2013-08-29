@@ -39,7 +39,7 @@ def _double_gauss(x, *p):
 
 def _conv_prof(x, *p):
     """convolved power law"""
-    prof_con = signal.convolve(p[0]*mirror(pmap.rad)**-p[1] + p[2], mirror(x),
+    prof_con = signal.convolve(p[0]*mirror(pmap.r)**-p[1] + p[2], mirror(x),
                                 mode="same")
     n = len(prof_con)/2
     prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5)
@@ -147,14 +147,14 @@ class Pacsmap(object):
             self.rprof_e = np.array([np.std(sim[lo:hi]) for lo,hi in
                                     zip(rind[:-1], rind[1:])])
 #             self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e, 0.99*self.rprof)
-            self.rad = binsize*(np.unique(ri)[:-1] + 0.5)
+            self.r = binsize*(np.unique(ri)[:-1] + 0.5)
         else:
-            self.rad = sr
+            self.r = sr
             self.rprof = sim
             self.rprof_e = np.zeros(len(sr))
         if rmax:
-            mask = [self.rad < rmax]
-            self.rad = self.rad[mask]
+            mask = [self.r < rmax]
+            self.r = self.r[mask]
             self.rprof = self.rprof[mask]
             self.rprof_e = self.rprof_e[mask]
 
@@ -162,7 +162,7 @@ psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
                 size=np.max((60, args.rmax)))
 fov = psf.patch.shape[0]/2
 psf.radprof(center=(fov,fov), rmax=args.rmax)
-plt.scatter(psf.rad, psf.rprof, marker='x', color=args.band)
+plt.scatter(psf.r, psf.rprof, marker='x', color=args.band)
 ax = plt.gca()
 ax.set_yscale('log')
 if args.debug:
@@ -171,15 +171,15 @@ if args.debug:
     plt.show()
 if args.binsize:
     psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=args.rmax)
-    plt.errorbar(psf.rad, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
+    plt.errorbar(psf.r, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
     for i in np.arange(0, args.rmax, args.binsize):
         plt.axvline(x=i, linestyle='--')
     np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
             args.binsize)),
-            np.transpose((psf.rad, psf.rprof, psf.rprof_e)))
-    plt.scatter(mirror(psf.rad, sign=-1), mirror(psf.rprof), marker='x', color="g")
+            np.transpose((psf.r, psf.rprof, psf.rprof_e)))
+    plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x', color="g")
 p0 = (1e-2, 4, 1e-2, 6, 4)
-coeff, var = curve_fit(_double_gauss, psf.rad, psf.rprof, p0=p0)
+coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
 #             sigma=err[mask])
 pickle.dump( coeff, open( "psf_{0}.p".format(args.band), "wb" ) )
 xfit = np.linspace(0, 40, 100)
@@ -200,26 +200,28 @@ if args.profile:
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
     if args.binsize:
         pmap.radprof(binsize=args.binsize, center=center, rmax=args.rmax)
-        plt.errorbar(pmap.rad, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
+        plt.errorbar(pmap.r, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-#     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), mirror(psf.rprof))
+    prof_decon, error = signal.deconvolve(mirror(pmap.rprof),
+                        _double_gauss(mirror(psf.r), *coeff))
+    print prof_decon
     p0 = (pmap.rprof[0], 1.1, 1e-3)
     popt, pcov = curve_fit(_conv_prof, psf.rprof, pmap.rprof, p0=p0,
                             sigma=pmap.rprof_e)
     conv_prof = _conv_prof(psf.rprof, *popt)
-    plt.plot(pmap.rad, conv_prof, color="red")
-    plt.scatter(mirror(pmap.rad, sign=-1), mirror(pmap.rprof), marker='x', color='green')
+    plt.plot(pmap.r, conv_prof, color="red")
+    plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     if args.save:
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
                 args.band, args.binsize)),
-                np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e, conv_prof)))
+                np.transpose((pmap.r, pmap.rprof, pmap.rprof_e, conv_prof)))
     pmap.radprof(center=center, rmax=args.rmax)
-    plt.scatter(pmap.rad, pmap.rprof, marker='x', color=args.band)
+    plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
     if args.save:
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
                 args.band)),
-                np.transpose((pmap.rad, pmap.rprof, pmap.rprof_e)))
+                np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
 #     ax.set_yscale('log')
     if args.rmax: plt.xlim(-args.rmax, args.rmax)
