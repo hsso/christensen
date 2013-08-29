@@ -76,8 +76,8 @@ class Pacsmap(object):
             # calculate comet position at midtime
             date_obs = self.hdus[0].header['DATE-OBS']
             date_end = self.hdus[0].header['DATE-END']
-            start = datetime.strptime(date_obs[:20], "%Y-%m-%dT%H:%M:%S.")
-            end = datetime.strptime(date_end[:20], "%Y-%m-%dT%H:%M:%S.")
+            start = datetime.strptime(date_obs, "%Y-%m-%dT%H:%M:%S.%f")
+            end = datetime.strptime(date_end, "%Y-%m-%dT%H:%M:%S.%f")
             mid_time = start + (end-start)/2
             # interpolate ra and dec of the comet
             ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
@@ -86,6 +86,7 @@ class Pacsmap(object):
             phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
             alpha = 3*np.pi/2 - phase_ang*np.pi/180
             cos, sin = np.cos(alpha), np.sin(alpha)
+            print self.cdelt2
             print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
                     "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
             print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
