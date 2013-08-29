@@ -24,6 +24,7 @@ parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
 parser.add_argument('--profile', action="store_true", help="radial profile")
 parser.add_argument('--psf', action="store_true", help="PSF profile")
 parser.add_argument('--save', action="store_true", help="save profile")
+parser.add_argument('--fit', action="store_true", help="fit power law")
 parser.add_argument('--binsize', default=0, type=float, help="bin size")
 parser.add_argument('--rmax', default=0, type=int, help="radial profile extent")
 args = parser.parse_args()
@@ -42,8 +43,8 @@ def _conv_prof(x, *p):
     prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1] + p[2]), mirror(x),
                                 mode="same")
     prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5,
-                mode="nearest")
-    if len(p)>3: prof_con += mirror(p[3]*np.exp(p[4]*pmap.r))
+                mode="nearest") + p[3]
+#     if len(p)>3: prof_con += mirror(p[3]*np.exp(p[4]*pmap.r))
     n = len(prof_con)/2
     if args.debug:
         plt.plot(mirror(pmap.r, sign=-1), prof_con)
@@ -150,6 +151,8 @@ class Pacsmap(object):
         sim = self.patch.flat[ind]
         sr = sr[sim >0]
         sim = sim[sim >0]
+        # normalize to Jy arcsec-2
+        sim /= self.cdelt2**2
         if binsize:
             sr /= binsize
             ri = sr.astype(np.int16)
@@ -221,31 +224,36 @@ if args.profile:
 #     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), yy)
 #     print prof_decon, error
 #     plt.plot(xx, yy)
-    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4, -.2)
-    popt, pcov = curve_fit(_conv_prof,
+    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
+#     p0 = (pmap.rprof[0], 1.1, 1e-3) #1e-4, -.2)
+    if args.fit:
+        popt, pcov = curve_fit(_conv_prof,
 #                             _double_gauss(psf.r, *coeff),
-                            psf.rprof,
-                            pmap.rprof, p0=p0,
-                            sigma=pmap.rprof_e
-                            )
-    conv_prof = _conv_prof(
+                                psf.rprof,
+                                pmap.rprof, p0=p0,
+#                             sigma=pmap.rprof_e
+                                )
+        conv_prof = _conv_prof(
 #                         _double_gauss(psf.r, *coeff),
-                        psf.rprof,
-                        *popt)
-    print popt, np.sqrt(pcov[1, 1])
-    print conv_prof
-    plt.plot(pmap.r, conv_prof, color="green")
+                            psf.rprof,
+                            *popt)
+#     print popt, np.sqrt(pcov[1, 1])
+        print conv_prof
+        plt.plot(pmap.r, conv_prof, color="green")
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_{3}_prof_fit.dat'.format(args.obsid,
+                args.band, args.binsize, args.rmax)),
+                np.transpose((np.append(0, pmap.r), np.append(conv_prof[0], conv_prof))))
     plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x', color='green')
     if args.save:
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
-                args.band, args.binsize)),
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_{3}_prof.dat'.format(args.obsid,
+                args.band, args.binsize, args.rmax)),
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     # unbinned profile
     pmap.radprof(center=center, rmax=args.rmax)
 #     plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
     if args.save:
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_prof.dat'.format(args.obsid,
-                args.band)),
+        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+                args.band, args.rmax)),
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
     ax.set_yscale('log')
