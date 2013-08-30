@@ -43,8 +43,8 @@ def _conv_prof(x, *p):
     prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1] + p[2]), mirror(x),
                                 mode="same")
     prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5,
-                mode="nearest") + p[3]
-#     if len(p)>3: prof_con += mirror(p[3]*np.exp(p[4]*pmap.r))
+                mode="nearest")
+    if len(p)>3: prof_con += p[3]
     n = len(prof_con)/2
     if args.debug:
         plt.plot(mirror(pmap.r, sign=-1), prof_con)
@@ -176,39 +176,39 @@ class Pacsmap(object):
             self.rprof = self.rprof[mask]
             self.rprof_e = self.rprof_e[mask]
 
-psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
-                size=np.max((60, args.rmax)))
-fov = psf.patch.shape[0]/2
-psf.radprof(center=(fov,fov), rmax=args.rmax)
-plt.scatter(psf.r, psf.rprof, marker='x', color=args.band)
-ax = plt.gca()
-ax.set_yscale('log')
-if args.debug:
-    plt.imshow(psf.patch, origin="lower")
-    plt.scatter(fov,fov)
-    plt.show()
-if args.binsize:
-    psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=args.rmax)
-    plt.errorbar(psf.r, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
-    for i in np.arange(0, args.rmax, args.binsize):
-        plt.axvline(x=i, linestyle='--')
-    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
-            args.binsize)),
-            np.transpose((psf.r, psf.rprof, psf.rprof_e)))
-    plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x', color="g")
-p0 = (1e-2, 4, 1e-2, 6, 4)
-coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
+if args.profile:
+    psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
+                    size=np.max((60, args.rmax)))
+    fov = psf.patch.shape[0]/2
+    psf.radprof(center=(fov,fov), rmax=args.rmax)
+    plt.scatter(psf.r, psf.rprof, marker='x', color=args.band)
+    ax = plt.gca()
+    ax.set_yscale('log')
+    if args.debug:
+        plt.imshow(psf.patch, origin="lower")
+        plt.scatter(fov,fov)
+        plt.show()
+    if args.binsize:
+        psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=args.rmax)
+        plt.errorbar(psf.r, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
+        for i in np.arange(0, args.rmax, args.binsize):
+            plt.axvline(x=i, linestyle='--')
+        np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
+                args.binsize)),
+                np.transpose((psf.r, psf.rprof, psf.rprof_e)))
+        plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x', color="g")
+    p0 = (1e-2, 4, 1e-2, 6, 4)
+    coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
 #             sigma=err[mask])
-pickle.dump( coeff, open( "psf_{0}.p".format(args.band), "wb" ) )
-xfit = np.linspace(0, 40, 100)
-yfit = _double_gauss(xfit, *coeff)
-plt.plot(xfit, yfit, 'r')
-np.savetxt(join(datadir, 'ascii', 'PSF_{0}_gauss.dat'.format(args.band)),
-            np.transpose((xfit, yfit)))
+    pickle.dump( coeff, open( "psf_{0}.p".format(args.band), "wb" ) )
+    xfit = np.linspace(0, 40, 100)
+    yfit = _double_gauss(xfit, *coeff)
+    plt.plot(xfit, yfit, 'r')
+    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_gauss.dat'.format(args.band)),
+                np.transpose((xfit, yfit)))
 # plt.xlim(0, args.rmax)
 # plt.show()
 
-if args.profile:
     pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
     pmap.shift(size=np.max((40, args.rmax)))
@@ -225,8 +225,8 @@ if args.profile:
 #     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), yy)
 #     print prof_decon, error
 #     plt.plot(xx, yy)
-    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
 #     p0 = (pmap.rprof[0], 1.1, 1e-3) #1e-4, -.2)
+    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
     if args.fit:
         popt, pcov = curve_fit(_conv_prof,
 #                             _double_gauss(psf.r, *coeff),
@@ -238,7 +238,7 @@ if args.profile:
 #                         _double_gauss(psf.r, *coeff),
                             psf.rprof,
                             *popt)
-#     print popt, np.sqrt(pcov[1, 1])
+        print popt, np.sqrt(pcov[1, 1])
         print conv_prof
         plt.plot(pmap.r, conv_prof, color="green")
         np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_{3}_prof_fit.dat'.format(args.obsid,
