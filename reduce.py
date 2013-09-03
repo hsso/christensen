@@ -11,6 +11,12 @@ from hsso.class_utils import pgram_peaks, linfunc, fitfunc
 from herschel import HIFISpectrum
 from christensen import datadir, freq0
 
+def fitsfile(obsid, backend, pol, sideband):
+    return glob.glob(
+        join(datadir, str(obsid), 'level2',
+        '{0}-{1}-{2}'.format(backend, pol, sideband),
+        'box_001', '*.fits*'))[0]
+
 # Parsing command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--backend', default='WBS', choices=('HRS', 'WBS'))
@@ -37,20 +43,14 @@ if not args.sideband: args.sideband = sideband[args.mol]
 obsid = 1342204014
 
 freq_list, flux_list = [], []
-for pol in ('H', 'V'):
-    """Return list of frequencies and fluxes in little endian byte order"""
-    spec = HIFISpectrum(glob.glob(
-        join(datadir, str(obsid), 'level2',
-        '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
-        'box_001', '*.fits*'))[0], args.sideband, args.subband)
-    freq_list.extend([spec.freq, spec.freq+spec.throw])
-    flux_list.extend([spec.flux, -spec.flux])
-    spec.save(join(datadir, 'ascii'))
-    print gildas.vel(freq0[args.mol] - spec.throw, freq0[args.mol])
-    plt.plot(spec.freq, spec.flux, drawstyle='steps-mid')
-    plt.axvline(x=freq0[args.mol], linestyle='--')
-    plt.axvline(x=freq0[args.mol] - spec.throw, linestyle='--')
-    plt.show()
+spec = HIFISpectrum(fitsfile(obsid, args.backend, 'H', args.sideband),
+                    args.subband)
+spec.add(HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
+                    args.subband))
+
+freq_list.extend([spec.freq, spec.freq+spec.throw])
+flux_list.extend([spec.flux, -spec.flux])
+spec.save(join(datadir, 'ascii'))
 
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0[args.mol])
