@@ -42,28 +42,28 @@ if not args.sideband: args.sideband = sideband[args.mol]
 
 obsid = 1342204014
 
-freq_list, flux_list = [], []
 spec = HIFISpectrum(fitsfile(obsid, args.backend, 'H', args.sideband),
                     args.subband)
-spec.add(HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
-                    args.subband))
-
-freq_list.extend([spec.freq, spec.freq+spec.throw])
-flux_list.extend([spec.flux, -spec.flux])
 spec.save(join(datadir, 'ascii'))
+specv = HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
+                    args.subband)
+spec.fold()
+spec.save(join(datadir, 'ascii'), '_folded')
+specv.fold()
+specv.save(join(datadir, 'ascii'), '_folded')
+spec.add(specv)
 
-freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
-vel = gildas.vel(freqav, freq0[args.mol])
+vel = gildas.vel(spec.freq, freq0[args.mol])
 
-baseflux = fluxav.copy()
+baseflux = spec.flux.copy()
 maskline = np.where(np.abs(vel) < 1)
 maskvel = np.where((np.abs(vel) < 3) & (np.abs(vel) > 1))
 velmask = np.where((np.abs(vel) < 3))
-func = np.poly1d(np.polyfit(freqav[maskvel], baseflux[maskvel], args.deg))
-baseflux[maskline] = func(freqav[maskline])
+func = np.poly1d(np.polyfit(spec.freq[maskvel], baseflux[maskvel], args.deg))
+baseflux[maskline] = func(spec.freq[maskline])
 
 # FFT
-sample_freq = fftpack.fftfreq(fluxav.size, d=np.abs(freqav[0]-freqav[1]))
+sample_freq = fftpack.fftfreq(spec.flux.size, d=np.abs(spec.freq[0]-spec.freq[1]))
 sig_fft = fftpack.fft(baseflux)
 
 if args.debug:
@@ -78,9 +78,9 @@ sig_fft[np.abs(sample_freq) > args.fftlim] = 0
 baseline = np.real(fftpack.ifft(sig_fft))
 
 if args.debug:
-    plt.plot(freqav, fluxav,  drawstyle='steps-mid')
-    plt.plot(freqav, baseline)
-    plt.plot(freqav[velmask], func(freqav[velmask]))
+    plt.plot(spec.freq, spec.flux,  drawstyle='steps-mid')
+    plt.plot(spec.freq, baseline)
+    plt.plot(spec.freq[velmask], func(spec.freq[velmask]))
     plt.axvline(x=freq0[args.mol], linestyle='--')
     if args.twiny:
         ax1 = plt.gca()
@@ -97,36 +97,36 @@ baseflux -= baseline
 scaled_flux = baseflux-baseflux.mean()
 # frequency
 f = np.linspace(1e2, 2e4, 1e4)
-pgram, peak_freqs, peak_flux = pgram_peaks(freqav, scaled_flux, f, args.num)
+pgram, peak_freqs, peak_flux = pgram_peaks(spec.freq, scaled_flux, f, args.num)
 if args.debug:
     plt.loglog(f, pgram)
     for maxfreq in peak_freqs:
         plt.axvline(x=maxfreq, linestyle='--')
     plt.show()
 
-A = linfunc(np.ones(2*args.num), freqav, peak_freqs)
+A = linfunc(np.ones(2*args.num), spec.freq, peak_freqs)
 c, resid, rank, sigma = linalg.lstsq(A, scaled_flux)
 lomb_baseline = np.sum(A*c, axis=1) + baseflux.mean()
 baseline += lomb_baseline
 
 if args.debug:
-    plt.plot(freqav, fluxav,  drawstyle='steps-mid')
-    plt.plot(freqav, baseline)
+    plt.plot(spec.freq, spec.flux,  drawstyle='steps-mid')
+    plt.plot(spec.freq, baseline)
     plt.axvline(x=freq0[args.mol], linestyle='--')
-#     plt.plot(freqav, 0.03*np.sin(np.max(peak_freqs)*freqav), 'red')
+#     plt.plot(spec.freq, 0.03*np.sin(np.max(peak_freqs)*spec.freq), 'red')
     plt.show()
 
-fluxav -= baseline
+spec.flux -= baseline
 delv = np.abs(np.average(vel[1:]-vel[:-1]))
 n = np.ceil(2*0.4/delv)
-rms = np.std(fluxav[4:-4])*1e3
+rms = np.std(spec.flux[4:-4])*1e3
 upper = 3 * np.sqrt(n) * delv * rms
-intens = gildas.intens(fluxav, vel, lim=args.lim)
+intens = gildas.intens(spec.flux, vel, lim=args.lim)
 print('intens = {0[0]} {0[1]} K km/s'.format(intens))
 print('rms = {0:.2f} mK, delv = {1:.3f} km/s, upper= {2:.2f} K m/s'.format(rms,
         delv, upper))
 mask = [np.abs(vel) <= 20]
-plt.plot(vel[mask], fluxav[mask],  drawstyle='steps-mid')
+plt.plot(vel[mask], spec.flux[mask],  drawstyle='steps-mid')
 # plt.axvspan(*args.lim, facecolor='b', alpha=0.5)
 plt.axhline(y=0)
 plt.axvline(x=0)
@@ -135,4 +135,4 @@ plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
                     obsid, freq0[args.mol], args.backend)),
-                    np.transpose((vel[mask], fluxav[mask]*1e3)))
+                    np.transpose((vel[mask], spec.flux[mask]*1e3)))
