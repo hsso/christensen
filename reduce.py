@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import pyfits
 import matplotlib.pyplot as plt
 import numpy as np
 from os.path import expanduser, join
@@ -9,7 +8,7 @@ import argparse
 from scipy import linalg, fftpack
 from hsso import gildas
 from hsso.class_utils import pgram_peaks, linfunc, fitfunc
-from herschel import fft
+from herschel import HIFISpectrum
 from christensen import datadir, freq0
 
 # Parsing command line arguments
@@ -40,15 +39,12 @@ obsid = 1342204014
 freq_list, flux_list = [], []
 for pol in ('H', 'V'):
     """Return list of frequencies and fluxes in little endian byte order"""
-    hdulist = pyfits.open( glob.glob(
+    spec = HIFISpectrum(glob.glob(
         join(datadir, str(obsid), 'level2',
         '{0}-{1}-{2}'.format(args.backend, pol, args.sideband),
-        'box_001', '*.fits*'))[0])
-    freq, flux, throw = fft(hdulist, args.sideband, args.subband)
-    flux = flux.byteswap().newbyteorder('L')/.75
-    freq = freq.byteswap().newbyteorder('L')
-    freq_list.extend([freq, freq+throw])
-    flux_list.extend([flux, -flux])
+        'box_001', '*.fits*'))[0], args.sideband, args.subband)
+    freq_list.extend([spec.freq, spec.freq+spec.throw])
+    flux_list.extend([spec.flux, -spec.flux])
 
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0[args.mol])
