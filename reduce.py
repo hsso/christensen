@@ -53,12 +53,10 @@ specv.fold()
 specv.save(join(datadir, 'ascii'), '_folded')
 spec.add(specv)
 
-vel = gildas.vel(spec.freq, freq0[args.mol])
-
 baseflux = spec.flux.copy()
-maskline = np.where(np.abs(vel) < 1)
-maskvel = np.where((np.abs(vel) < 3) & (np.abs(vel) > 1))
-velmask = np.where((np.abs(vel) < 3))
+maskline = np.where(np.abs(spec.vel) < 1)
+maskvel = np.where((np.abs(spec.vel) < 3) & (np.abs(spec.vel) > 1))
+velmask = np.where((np.abs(spec.vel) < 3))
 func = np.poly1d(np.polyfit(spec.freq[maskvel], baseflux[maskvel], args.deg))
 baseflux[maskline] = func(spec.freq[maskline])
 
@@ -117,16 +115,16 @@ if args.debug:
     plt.show()
 
 spec.flux -= baseline
-delv = np.abs(np.average(vel[1:]-vel[:-1]))
+delv = np.abs(np.average(spec.vel[1:]-spec.vel[:-1]))
 n = np.ceil(2*0.4/delv)
 rms = np.std(spec.flux[4:-4])*1e3
 upper = 3 * np.sqrt(n) * delv * rms
-intens = gildas.intens(spec.flux, vel, lim=args.lim)
+intens = gildas.intens(spec.flux, spec.vel, lim=args.lim)
 print('intens = {0[0]} {0[1]} K km/s'.format(intens))
 print('rms = {0:.2f} mK, delv = {1:.3f} km/s, upper= {2:.2f} K m/s'.format(rms,
         delv, upper))
-mask = [np.abs(vel) <= 20]
-plt.plot(vel[mask], spec.flux[mask],  drawstyle='steps-mid')
+mask = [np.abs(spec.vel) <= 20]
+plt.plot(spec.vel[mask], spec.flux[mask],  drawstyle='steps-mid')
 # plt.axvspan(*args.lim, facecolor='b', alpha=0.5)
 plt.axhline(y=0)
 plt.axvline(x=0)
@@ -135,4 +133,4 @@ plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
                     obsid, freq0[args.mol], args.backend)),
-                    np.transpose((vel[mask], spec.flux[mask]*1e3)))
+                    np.transpose((spec.vel[mask], spec.flux[mask]*1e3)))
