@@ -45,6 +45,12 @@ for pol in ('H', 'V'):
         'box_001', '*.fits*'))[0], args.sideband, args.subband)
     freq_list.extend([spec.freq, spec.freq+spec.throw])
     flux_list.extend([spec.flux, -spec.flux])
+    spec.save(join(datadir, 'ascii'))
+    print gildas.vel(freq0[args.mol] - spec.throw, freq0[args.mol])
+    plt.plot(spec.freq, spec.flux, drawstyle='steps-mid')
+    plt.axvline(x=freq0[args.mol], linestyle='--')
+    plt.axvline(x=freq0[args.mol] - spec.throw, linestyle='--')
+    plt.show()
 
 freqav, fluxav = gildas.averagen(freq_list, flux_list, goodval=True)
 vel = gildas.vel(freqav, freq0[args.mol])
