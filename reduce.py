@@ -17,6 +17,9 @@ def fitsfile(obsid, backend, pol, sideband):
         '{0}-{1}-{2}'.format(backend, pol, sideband),
         'box_001', '*.fits*'))[0]
 
+def fileout(suffix):
+    return "{}_{}{}.dat".format(obsid, args.backend, suffix)
+
 # Parsing command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--backend', default='WBS', choices=('HRS', 'WBS'))
@@ -45,23 +48,28 @@ obsid = 1342204014
 spec = HIFISpectrum(fitsfile(obsid, args.backend, 'H', args.sideband),
                     args.subband)
 spec.scale((-60, 10))
-spec.save(join(datadir, 'ascii'))
+spec.save(join(datadir, 'ascii', fileout('-H')))
 specv = HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
                     args.subband)
 specv.scale((-60, 10))
-specv.save(join(datadir, 'ascii'))
+specv.save(join(datadir, 'ascii', fileout('-V')))
 # spec_ave = spec + specv
 # spec_ave.save(join(datadir, 'ascii'), '_aver')
 spec.fold()
 spec.scale((-10, 10))
-spec.save(join(datadir, 'ascii'), '_folded')
+spec.save(join(datadir, 'ascii', fileout('-H_folded')))
+spec.fftbase(args.fftlim)
+spec.save(join(datadir, 'ascii', fileout('-H_baseline')), "baseline")
 specv.fold()
 specv.scale((-10, 10))
-specv.save(join(datadir, 'ascii'), '_folded')
+specv.save(join(datadir, 'ascii', fileout('-V_folded')))
+specv.fftbase(args.fftlim)
+specv.save(join(datadir, 'ascii', fileout('-V_baseline')), "baseline")
 spec.add(specv)
 spec.scale((-10, 10))
-spec.save(join(datadir, 'ascii'), '_ave')
-spec.baseline(args.fftlim, join(datadir, 'ascii'))
+spec.save(join(datadir, 'ascii', fileout('_ave')))
+spec.fftbase(args.fftlim)
+spec.save(join(datadir, 'ascii', fileout('_baseline')), "baseline")
 
 baseflux = spec.flux.copy()
 maskline = np.where(np.abs(spec.vel) < 1)
