@@ -55,24 +55,29 @@ specv.scale((-60, 10))
 specv.save(join(datadir, 'ascii', fileout('-V')))
 # spec_ave = spec + specv
 # spec_ave.save(join(datadir, 'ascii'), '_aver')
+
 spec.fold()
 spec.scale((-10, 10))
 spec.save(join(datadir, 'ascii', fileout('-H_folded')))
-spec.fftbase(args.fftlim)
+spec.fftbase(args.fftlim, shift=-0.4, linelim=1., plot=args.debug)
 spec.save(join(datadir, 'ascii', fileout('-H_baseline')), "baseline")
 spec.save(join(datadir, 'ascii', fileout('-H_fluxcal')), "fluxcal")
+if args.debug: spec.plot()
+
 specv.fold()
 specv.scale((-10, 10))
 specv.save(join(datadir, 'ascii', fileout('-V_folded')))
 specv.fftbase(args.fftlim)
 specv.save(join(datadir, 'ascii', fileout('-V_baseline')), "baseline")
 specv.save(join(datadir, 'ascii', fileout('-V_fluxcal')), "fluxcal")
+if args.debug: specv.plot()
+
 spec.add(specv)
 spec.scale((-10, 10))
 spec.save(join(datadir, 'ascii', fileout('_ave')))
-spec.fftbase(args.fftlim)
+spec.fftbase(args.fftlim, shift=-0.2, plot=args.debug)
 spec.save(join(datadir, 'ascii', fileout('_baseline')), "baseline")
-
+spec.save(join(datadir, 'ascii', fileout('_fluxcal')), "fluxcal")
 if args.debug: spec.plot()
 
 # Lomb-Scargle periodogram
