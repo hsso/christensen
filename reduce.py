@@ -60,57 +60,24 @@ spec.scale((-10, 10))
 spec.save(join(datadir, 'ascii', fileout('-H_folded')))
 spec.fftbase(args.fftlim)
 spec.save(join(datadir, 'ascii', fileout('-H_baseline')), "baseline")
+spec.save(join(datadir, 'ascii', fileout('-H_fluxcal')), "fluxcal")
 specv.fold()
 specv.scale((-10, 10))
 specv.save(join(datadir, 'ascii', fileout('-V_folded')))
 specv.fftbase(args.fftlim)
 specv.save(join(datadir, 'ascii', fileout('-V_baseline')), "baseline")
+specv.save(join(datadir, 'ascii', fileout('-V_fluxcal')), "fluxcal")
 spec.add(specv)
 spec.scale((-10, 10))
 spec.save(join(datadir, 'ascii', fileout('_ave')))
 spec.fftbase(args.fftlim)
 spec.save(join(datadir, 'ascii', fileout('_baseline')), "baseline")
 
-baseflux = spec.flux.copy()
-maskline = np.where(np.abs(spec.vel) < 1)
-maskvel = np.where((np.abs(spec.vel) < 3) & (np.abs(spec.vel) > 1))
-velmask = np.where((np.abs(spec.vel) < 3))
-func = np.poly1d(np.polyfit(spec.freq[maskvel], baseflux[maskvel], args.deg))
-baseflux[maskline] = func(spec.freq[maskline])
-
-# FFT
-sample_freq = fftpack.fftfreq(spec.flux.size, d=np.abs(spec.freq[0]-spec.freq[1]))
-sig_fft = fftpack.fft(baseflux)
-
-if args.debug:
-    pidxs = np.where(sample_freq > 0)
-    f = sample_freq[pidxs]
-    pgram = np.abs(sig_fft)[pidxs]
-    plt.loglog(f, pgram)
-    plt.axvline(x=args.fftlim, linestyle='--')
-    plt.show()
-
-sig_fft[np.abs(sample_freq) > args.fftlim] = 0
-baseline = np.real(fftpack.ifft(sig_fft))
-
-if args.debug:
-    plt.plot(spec.freq, spec.flux,  drawstyle='steps-mid')
-    plt.plot(spec.freq, baseline)
-    plt.plot(spec.freq[velmask], func(spec.freq[velmask]))
-    plt.axvline(x=freq0[args.mol], linestyle='--')
-    if args.twiny:
-        ax1 = plt.gca()
-        # update xlim of ax2
-        ax2 = ax1.twiny()
-        x1, x2 = ax1.get_xlim()
-        ax2.set_xlim(gildas.vel(x1, freq0[args.mol]),
-                     gildas.vel(x2, freq0[args.mol]))
-    plt.show()
-
-baseflux -= baseline
+if args.debug: spec.plot()
 
 # Lomb-Scargle periodogram
-scaled_flux = baseflux-baseflux.mean()
+spec.baseflux -= spec.baseline
+scaled_flux = spec.baseflux-spec.baseflux.mean()
 # frequency
 f = np.linspace(1e2, 2e4, 1e4)
 pgram, peak_freqs, peak_flux = pgram_peaks(spec.freq, scaled_flux, f, args.num)
@@ -122,17 +89,17 @@ if args.debug:
 
 A = linfunc(np.ones(2*args.num), spec.freq, peak_freqs)
 c, resid, rank, sigma = linalg.lstsq(A, scaled_flux)
-lomb_baseline = np.sum(A*c, axis=1) + baseflux.mean()
-baseline += lomb_baseline
+lomb_baseline = np.sum(A*c, axis=1) + spec.baseflux.mean()
+spec.baseline += lomb_baseline
 
 if args.debug:
     plt.plot(spec.freq, spec.flux,  drawstyle='steps-mid')
-    plt.plot(spec.freq, baseline)
+    plt.plot(spec.freq, spec.baseline)
     plt.axvline(x=freq0[args.mol], linestyle='--')
 #     plt.plot(spec.freq, 0.03*np.sin(np.max(peak_freqs)*spec.freq), 'red')
     plt.show()
 
-spec.flux -= baseline
+spec.flux -= spec.baseline
 delv = np.abs(np.average(spec.vel[1:]-spec.vel[:-1]))
 n = np.ceil(2*0.4/delv)
 rms = np.std(spec.flux[4:-4])*1e3
@@ -151,4 +118,4 @@ plt.show()
 
 np.savetxt(expanduser("~/HssO/Christensen/data/ascii/{}_{:.0f}_{}.dat".format(
                     obsid, freq0[args.mol], args.backend)),
-                    np.transpose((spec.vel[mask], spec.flux[mask]*1e3)))
+                    np.transpose((spec.vel[mask], spec.flux[mask])))
