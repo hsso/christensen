@@ -44,14 +44,24 @@ obsid = 1342204014
 
 spec = HIFISpectrum(fitsfile(obsid, args.backend, 'H', args.sideband),
                     args.subband)
+spec.scale((-60, 10))
 spec.save(join(datadir, 'ascii'))
 specv = HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
                     args.subband)
+specv.scale((-60, 10))
+specv.save(join(datadir, 'ascii'))
+# spec_ave = spec + specv
+# spec_ave.save(join(datadir, 'ascii'), '_aver')
 spec.fold()
+spec.scale((-10, 10))
 spec.save(join(datadir, 'ascii'), '_folded')
 specv.fold()
+specv.scale((-10, 10))
 specv.save(join(datadir, 'ascii'), '_folded')
 spec.add(specv)
+spec.scale((-10, 10))
+spec.save(join(datadir, 'ascii'), '_ave')
+spec.baseline(args.fftlim, join(datadir, 'ascii'))
 
 baseflux = spec.flux.copy()
 maskline = np.where(np.abs(spec.vel) < 1)
