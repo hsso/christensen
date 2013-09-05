@@ -11,7 +11,7 @@ from hsso.class_utils import pgram_peaks, linfunc, fitfunc
 from herschel import HIFISpectrum
 from christensen import datadir, freq0
 
-def fitsfile(obsid, backend, pol, sideband):
+def hififits(datadir, obsid, backend, pol, sideband):
     return glob.glob(
         join(datadir, str(obsid), 'level2',
         '{0}-{1}-{2}'.format(backend, pol, sideband),
@@ -46,7 +46,7 @@ if not args.sideband: args.sideband = sideband[args.mol]
 
 obsid = 1342204014
 
-spec = HIFISpectrum(fitsfile(obsid, args.backend, 'H', args.sideband),
+spec = HIFISpectrum(hififits(datadir, obsid, args.backend, 'H', args.sideband),
                     args.subband)
 spec.scale((-60, 10))
 spec.save(fileout('-H'))
@@ -55,7 +55,7 @@ spec.save(fileout('-H_unfolded'), "baseline")
 spec.save(fileout('-H_unfold_fluxcal'), "fluxcal")
 if args.debug: spec.plot()
 
-specv = HIFISpectrum(fitsfile(obsid, args.backend, 'V', args.sideband),
+specv = HIFISpectrum(hififits(datadir, obsid, args.backend, 'V', args.sideband),
                     args.subband)
 specv.scale((-60, 10))
 specv.save(fileout('-V'))
