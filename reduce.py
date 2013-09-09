@@ -3,19 +3,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from os.path import expanduser, join
-import glob
 import argparse
 from scipy import linalg, fftpack
 from hsso import gildas
 from hsso.class_utils import pgram_peaks, linfunc, fitfunc
-from herschel import HIFISpectrum
+from herschel import HIFISpectrum, hififits
 from christensen import datadir, freq0
-
-def hififits(datadir, obsid, backend, pol, sideband):
-    return glob.glob(
-        join(datadir, str(obsid), 'level2',
-        '{0}-{1}-{2}'.format(backend, pol, sideband),
-        'box_001', '*.fits*'))[0]
 
 def fileout(suffix):
     filename = "{}_{}{}.dat".format(obsid, args.backend, suffix)
