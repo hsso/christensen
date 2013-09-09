@@ -1,4 +1,5 @@
 #!/usr/bin/python
+"""Print Christensen observing log table"""
 
 from christensen import obsids, datadir, paperdir
 from os.path import join

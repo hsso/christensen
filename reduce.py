@@ -38,30 +38,39 @@ if not args.subband: args.subband = subband[args.backend]
 if not args.sideband: args.sideband = sideband[args.mol]
 
 obsid = 1342204014
-
 spec = HIFISpectrum(hififits(datadir, obsid, args.backend, 'H', args.sideband),
-                    args.subband)
-spec.scale((-60, 10))
-spec.save(fileout('-H'))
-spec.fftbase(args.fftlim, line=(0, -50.8683), shift=-0.4, linelim=1., plot=args.debug)
-spec.save(fileout('-H_unfolded'), "baseline")
-spec.save(fileout('-H_unfold_fluxcal'), "fluxcal")
-if args.debug: spec.plot()
-
+                    args.subband, freq0=freq0[args.mol])
 specv = HIFISpectrum(hififits(datadir, obsid, args.backend, 'V', args.sideband),
-                    args.subband)
-specv.scale((-60, 10))
-specv.save(fileout('-V'))
-specv.fftbase(args.fftlim, line=(0, -50.8683), linelim=1., plot=args.debug)
-specv.save(fileout('-V_unfolded'), "baseline")
-specv.save(fileout('-V_unfold_fluxcal'), "fluxcal")
-if args.debug: specv.plot()
+                    args.subband, freq0=freq0[args.mol])
 
-spec.add(specv)
-spec.save(fileout('_aver'))
-spec.fftbase(args.fftlim, line=(0, -50.8683), shift=-0.2, linelim=1., plot=args.debug)
-spec.save(fileout('_unfolded'), "baseline")
-spec.save(fileout('_unfold_fluxcal'), "fluxcal")
+if args.mol == "NH3":
+    spec.fold()
+    specv.fold()
+    spec.add(specv)
+    spec.fftbase(args.fftlim, line=(), plot=args.debug)
+    spec.save(fileout('_NH3'), "fluxcal")
+    if args.debug: spec.plot()
+else:
+    spec.scale((-60, 10))
+    spec.save(fileout('-H'))
+    spec.fftbase(args.fftlim, line=(0, -50.8683), shift=-0.4, linelim=1., plot=args.debug)
+    spec.save(fileout('-H_unfolded'), "baseline")
+    spec.save(fileout('-H_unfold_fluxcal'), "fluxcal")
+    if args.debug: spec.plot()
+
+    specv.scale((-60, 10))
+    specv.save(fileout('-V'))
+    specv.fftbase(args.fftlim, line=(0, -50.8683), linelim=1., plot=args.debug)
+    specv.save(fileout('-V_unfolded'), "baseline")
+    specv.save(fileout('-V_unfold_fluxcal'), "fluxcal")
+    if args.debug: specv.plot()
+
+    spec.add(specv)
+    spec.save(fileout('_aver'))
+    spec.fftbase(args.fftlim, line=(0, -50.8683), shift=-0.2, linelim=1., plot=args.debug)
+    spec.save(fileout('_unfolded'), "baseline")
+    spec.save(fileout('_unfold_fluxcal'), "fluxcal")
+    if args.debug: spec.plot()
 
 # spec.fold()
 # spec.scale((-10, 10))
