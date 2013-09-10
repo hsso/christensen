@@ -15,7 +15,7 @@ def hierarch_key(header, value):
 
 ms_speed = {'low': 10, 'medium': 20}
 f = open(join(paperdir, 'log.txt'), 'w')
-for obsid in obsids:
+for obsid in obsids[2:]:
     hdus = pyfits.open(glob.glob(join(datadir, str(obsid), '*fits.gz'))[0])
     date_obs = hdus[0].header['DATE-OBS']
     date_end = hdus[0].header['DATE-END']
@@ -40,7 +40,7 @@ for obsid in obsids:
     rh = deltadot(mid_time, filename="horizons.txt", column=4).item()
     delta = deltadot(mid_time, filename="horizons.txt", column=6).item()
     phi = deltadot(mid_time, filename="horizons.txt", column=8).item()
-    f.write("{:%Y-%m}-{:06.3f} & {} & {} & {:.1f} & {} & {} & {} & "
+    f.write("{:%m}-{:05.2f} & {} & {} & {:.1f} & "
             "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time,
-            frac_day(mid_time), ins, obsid, exp_min, scan_ang, map_size, scan_speed,
+            frac_day(mid_time), ins, obsid-1342200000, exp_min,
             rh, delta, phi))
