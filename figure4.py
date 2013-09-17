@@ -1,20 +1,20 @@
 #!/usr/bin/python
 """Print Christensen observing log table"""
 
-rc=2.808
-m=-2.15
-n=5.093
-k=-4.6142
-skal=3.9e+28
-per=3.126
-alfg=skal/(((per/rc)**m)*(1+(per/rc)**n)**k)
-g=alfg*(((rhs/rc)**m)*(1+(rhs/rc)**n)**k)
+import numpy as np
+from christensen import datadir
+from os.path import join
 
-# solid curve:
-rcs=5.6
-ms=-2.1
-ns=3.2
-ks=-3.9
-skal=3.9e+28
-alfs=skal/(((per/rcs)**ms)*(1+(per/rcs)**ns)**ks)
-gs=alfs*(((rhs/rcs)**ms)*(1+(rhs/rcs)**ns)**ks)
+def profile(rhs, rc, m, n, k):
+    return ((rhs/rc)**m)*(1+(rhs/rc)**n)**k
+
+skal = 3.9e+28
+per = 3.126
+dash_par = (2.808, -2.15, 5.093, -4.6142)
+solid_par = (5.6, -2.1, 3.2, -3.9)
+rh = np.linspace(3.126, 6.5, 100)
+dashed = skal*profile(rh, *dash_par)/profile(per, *dash_par)
+solid = skal*profile(rh, *solid_par)/profile(per, *solid_par)
+
+np.savetxt(join(datadir, 'ascii', 'dashed.dat'), np.transpose((rh, dashed)))
+np.savetxt(join(datadir, 'ascii', 'solid.dat'), np.transpose((rh, solid)))
