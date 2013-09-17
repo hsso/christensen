@@ -34,8 +34,10 @@ args = parser.parse_args()
 
 subband = {'HRS': 1, 'WBS': 4}
 sideband = {'H2O': 'LSB', 'NH3': 'USB'}
+fftlim = {'HRS': 1e3, 'WBS': 2.5e2}
 if not args.subband: args.subband = subband[args.backend]
 if not args.sideband: args.sideband = sideband[args.mol]
+if not args.fftlim: args.fftlim = fftlim[args.backend]
 
 obsid = 1342204014
 spec = HIFISpectrum(hififits(datadir, obsid, args.backend, 'H', args.sideband),
