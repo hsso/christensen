@@ -5,8 +5,8 @@ import numpy as np
 from christensen import datadir
 from os.path import join
 
-def profile(rhs, rc, m, n, k):
-    return ((rhs/rc)**m)*(1+(rhs/rc)**n)**k
+def profile(rh, rc, m, n, k):
+    return ((rh/rc)**m)*(1+(rh/rc)**n)**k
 
 skal = 3.9e+28
 per = 3.126
