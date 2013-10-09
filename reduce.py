@@ -61,6 +61,7 @@ elif args.fold:
     spec.save(fileout('-H_baseline'), "baseline")
     spec.save(fileout('-H_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
+    print(spec.intens, spec.error, spec.snr)
 
     specv.fold()
     specv.scale((-10, 10))
@@ -69,6 +70,7 @@ elif args.fold:
     specv.save(fileout('-V_baseline'), "baseline")
     specv.save(fileout('-V_fluxcal'), "fluxcal")
     if args.debug: specv.plot()
+    print(specv.intens, specv.error, specv.snr)
 
     spec.add(specv)
     spec.scale((-10, 10))
@@ -77,6 +79,7 @@ elif args.fold:
     spec.save(fileout('_baseline'), "baseline")
     spec.save(fileout('_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
+    print(spec.intens, spec.error, spec.snr)
 else:
     spec.scale((-60, 10))
     spec.save(fileout('-H'))
