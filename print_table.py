@@ -40,7 +40,7 @@ for obsid in obsids[2:]:
     rh = deltadot(mid_time, filename="horizons.txt", column=4).item()
     delta = deltadot(mid_time, filename="horizons.txt", column=6).item()
     phi = deltadot(mid_time, filename="horizons.txt", column=8).item()
-    f.write("{:%m}-{:05.2f} & {} & {} & {:.1f} & "
+    f.write("{:%m}-{:05.2f} & {} & {} & {:.1f} & {} & "
             "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time,
-            frac_day(mid_time), ins, obsid-1342200000, exp_min,
+            frac_day(mid_time), ins, obsid, exp_min, scan_ang,
             rh, delta, phi))
