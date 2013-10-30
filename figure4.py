@@ -4,6 +4,7 @@
 import numpy as np
 from christensen import datadir
 from os.path import join
+import matplotlib.pyplot as plt
 
 def profile(rh, rc, m, n, k):
     return ((rh/rc)**m)*(1+(rh/rc)**n)**k
@@ -18,3 +19,11 @@ solid = skal*profile(rh, *solid_par)/profile(per, *solid_par)
 
 np.savetxt(join(datadir, 'ascii', 'dashed.dat'), np.transpose((rh, dashed)))
 np.savetxt(join(datadir, 'ascii', 'solid.dat'), np.transpose((rh, solid)))
+
+plt.semilogy(rh, solid)
+plt.semilogy(rh, dashed)
+plt.xlim(3, 6)
+plt.ylim(1e27, 1e29)
+plt.xlabel("rh")
+plt.ylabel("Q")
+plt.show()
