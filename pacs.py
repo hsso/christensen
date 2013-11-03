@@ -22,7 +22,6 @@ parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
 parser.add_argument('-b', '--band', default="blue", choices=("blue", "red"),
                 help="PACS band")
 parser.add_argument('--profile', action="store_true", help="radial profile")
-parser.add_argument('--psf', action="store_true", help="PSF profile")
 parser.add_argument('--save', action="store_true", help="save profile")
 parser.add_argument('--fit', action="store_true", help="fit power law")
 parser.add_argument('--binsize', default=0, type=float, help="bin size")
