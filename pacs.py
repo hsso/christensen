@@ -176,6 +176,7 @@ class Pacsmap(object):
             self.rprof_e = self.rprof_e[mask]
 
 if args.profile:
+    # calculate radial profile
     psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
                     size=np.max((60, args.rmax)))
     fov = psf.patch.shape[0]/2
@@ -240,19 +241,24 @@ if args.profile:
         print popt, np.sqrt(pcov[1, 1])
         print conv_prof
         plt.plot(pmap.r, conv_prof, color="green")
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_{3}_prof_fit.dat'.format(args.obsid,
+        np.savetxt(join(datadir, 'ascii',
+                '{0}_{1}_{2}_{3}_prof_fit.dat'.format(args.obsid,
                 args.band, args.binsize, args.rmax)),
-                np.transpose((np.append(0, pmap.r), np.append(conv_prof[0], conv_prof))))
-    plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x', color='green')
+                np.transpose((np.append(0, pmap.r), np.append(conv_prof[0],
+                    conv_prof))))
+    plt.scatter(mirror(pmap.r, sign=-1), mirror(pmap.rprof), marker='x',
+            color='green')
     if args.save:
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_{3}_prof.dat'.format(args.obsid,
+        np.savetxt(join(datadir, 'ascii',
+                '{0}_{1}_{2}_{3}_prof.dat'.format(args.obsid,
                 args.band, args.binsize, args.rmax)),
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     # unbinned profile
     pmap.radprof(center=center, rmax=args.rmax)
 #     plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
     if args.save:
-        np.savetxt(join(datadir, 'ascii', '{0}_{1}_{2}_prof.dat'.format(args.obsid,
+        np.savetxt(join(datadir, 'ascii',
+                '{0}_{1}_{2}_prof.dat'.format(args.obsid,
                 args.band, args.rmax)),
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     ax = plt.gca()
