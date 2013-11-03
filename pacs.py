@@ -59,6 +59,8 @@ def pcov_sigma(x, popt, pcov, yn, sigma):
     return pcov / factor
 
 class Pacsmap(object):
+    """Read PACS photometry map"""
+
     def __init__(self, obsid, size=60, zoom=0, comet=True):
         """return patch centered on the nucleus"""
         if isinstance(obsid, int):
@@ -176,7 +178,7 @@ class Pacsmap(object):
             self.rprof_e = self.rprof_e[mask]
 
 if args.profile:
-    # calculate radial profile
+    # calculate PSF radial profile
     psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
                     size=np.max((60, args.rmax)))
     fov = psf.patch.shape[0]/2
@@ -193,10 +195,15 @@ if args.profile:
         plt.errorbar(psf.r, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-        np.savetxt(join(datadir, 'ascii', 'PSF_{0}_{1}_prof.dat'.format(args.band,
-                args.binsize)),
-                np.transpose((psf.r, psf.rprof, psf.rprof_e)))
-        plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x', color="g")
+        plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x',
+                color="g")
+        np.savetxt(join(datadir, 'ascii',
+            'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
+            np.transpose((psf.r, psf.rprof, psf.rprof_e)))
+    else:
+        np.savetxt(join(datadir, 'ascii',
+            'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
+            np.transpose((psf.r, psf.rprof)))
     p0 = (1e-2, 4, 1e-2, 6, 4)
     coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
 #             sigma=err[mask])
