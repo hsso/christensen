@@ -51,6 +51,7 @@ if args.mol == "NH3":
     specv.fold()
     spec.add(specv)
     spec.fftbase(args.fftlim, line=(), plot=args.debug)
+    spec.resample()
     spec.save(fileout('_NH3'), "fluxcal")
     if args.debug: spec.plot()
 elif args.fold:
