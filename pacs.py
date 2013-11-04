@@ -7,7 +7,7 @@ from os.path import join
 import glob
 import pywcs
 import argparse
-from christensen import datadir, figsdir, horizons_file, psfdir, psf_vesta
+from christensen import datadir, figsdir, horizons_file
 import matplotlib.cm as cm
 from scipy import ndimage, stats, signal
 from scipy.optimize import curve_fit
@@ -106,7 +106,7 @@ class Pacsmap(object):
             plt.close()
 
     def shift(self, size=30):
-        # select the top 0.99% pixels to calculate the center of mass
+        """select the top 0.99% pixels to calculate the center of mass"""
         hist, bins = np.histogram(self.patch.ravel(), normed=True, bins=100)
         threshold = bins[np.cumsum(hist) * (bins[1] - bins[0]) > 0.992][0]
         mpatch = np.ma.masked_less(self.patch, threshold)
@@ -170,44 +170,10 @@ class Pacsmap(object):
             self.rprof_e = self.rprof_e[mask]
 
 if args.profile:
-    # calculate PSF radial profile
-    psf = Pacsmap(join(psfdir, psf_vesta[args.band]), comet=False,
-                    size=np.max((60, args.rmax)))
-    fov = psf.patch.shape[0]/2
-    psf.radprof(center=(fov,fov), rmax=args.rmax)
-    plt.scatter(psf.r, psf.rprof, marker='x', color=args.band)
-    ax = plt.gca()
-    ax.set_yscale('log')
-    if args.debug:
-        plt.imshow(psf.patch, origin="lower")
-        plt.scatter(fov,fov)
-        plt.show()
-    if args.binsize:
-        psf.radprof(binsize=args.binsize, center=(fov,fov), rmax=args.rmax)
-        plt.errorbar(psf.r, psf.rprof, yerr=psf.rprof_e, fmt='x', color="g")
-        for i in np.arange(0, args.rmax, args.binsize):
-            plt.axvline(x=i, linestyle='--')
-        plt.scatter(mirror(psf.r, sign=-1), mirror(psf.rprof), marker='x',
-                color="g")
-        np.savetxt(join(datadir, 'ascii',
-            'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
-            np.transpose((psf.r, psf.rprof, psf.rprof_e)))
-    else:
-        mask = [psf.rprof > 1e-6]
-        np.savetxt(join(datadir, 'ascii',
-            'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
-            np.transpose((psf.r[mask], psf.rprof[mask])))
-    p0 = (1e-2, 4, 1e-2, 6, 4)
-    coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
-#             sigma=err[mask])
-    pickle.dump( coeff, open( "psf_{0}.p".format(args.band), "wb" ) )
-    xfit = np.linspace(0, 40, 100)
+    # read PSF gaussian coefficients
+    coeff = pickle.load(open( "psf_{0}.p".format(args.band), "rb" ))
+    xfit = np.linspace(0, args.rmax, 100)
     yfit = _double_gauss(xfit, *coeff)
-    plt.plot(xfit, yfit, 'r')
-    np.savetxt(join(datadir, 'ascii', 'PSF_{0}_gauss.dat'.format(args.band)),
-                np.transpose((xfit, yfit)))
-# plt.xlim(0, args.rmax)
-# plt.show()
 
     pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
@@ -220,12 +186,6 @@ if args.profile:
         plt.errorbar(pmap.r, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-#     xx = mirror(pmap.r[:args.rmax/4], sign=-1)
-#     yy = mirror(_double_gauss(pmap.r[:args.rmax/4], *coeff))
-#     prof_decon, error = signal.deconvolve(mirror(pmap.rprof), yy)
-#     print prof_decon, error
-#     plt.plot(xx, yy)
-#     p0 = (pmap.rprof[0], 1.1, 1e-3) #1e-4, -.2)
     p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
     if args.fit:
         popt, pcov = curve_fit(_conv_prof,
