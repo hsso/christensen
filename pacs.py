@@ -50,14 +50,6 @@ def _conv_prof(x, *p):
         plt.plot(pmap.r, prof_con[n:])
     return prof_con[n:]
 
-def pcov_sigma(x, popt, pcov, yn, sigma):
-    """http://nbviewer.ipython.org/5014170/"""
-    chi = (yn - _conv_prof(x, *popt)) / sigma
-    chi2 = (chi ** 2).sum()
-    dof = len(x) - len(popt)
-    factor = (chi2 / dof)
-    return pcov / factor
-
 class Pacsmap(object):
     """Read PACS photometry map"""
 
