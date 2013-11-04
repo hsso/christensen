@@ -201,9 +201,10 @@ if args.profile:
             'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
             np.transpose((psf.r, psf.rprof, psf.rprof_e)))
     else:
+        mask = [psf.rprof > 1e-6]
         np.savetxt(join(datadir, 'ascii',
             'PSF_{0}_{1}_prof.dat'.format(args.band, args.binsize)),
-            np.transpose((psf.r, psf.rprof)))
+            np.transpose((psf.r[mask], psf.rprof[mask])))
     p0 = (1e-2, 4, 1e-2, 6, 4)
     coeff, var = curve_fit(_double_gauss, psf.r, psf.rprof, p0=p0)
 #             sigma=err[mask])
