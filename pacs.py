@@ -38,7 +38,9 @@ def _double_gauss(x, *p):
     return gauss1+gauss2
 
 def _conv_prof(x, *p):
-    """convolved power law"""
+    """convolved power law
+    x : map profile
+    """
     prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1] + p[2]), mirror(x),
                                 mode="same")
     prof_con = ndimage.interpolation.shift(prof_con, -args.binsize*0.5,
@@ -173,11 +175,6 @@ class Pacsmap(object):
             self.rprof_e = self.rprof_e[mask]
 
 if args.profile:
-    # read PSF gaussian coefficients
-    coeff = pickle.load(open( "psf_{0}.p".format(args.band), "rb" ))
-    xfit = np.linspace(0, args.rmax, 100)
-    yfit = _double_gauss(xfit, *coeff)
-
     pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
     pmap.com(size=40)
@@ -190,17 +187,17 @@ if args.profile:
         plt.errorbar(pmap.r, pmap.rprof, yerr=pmap.rprof_e, fmt='x', color="g")
         for i in np.arange(0, args.rmax, args.binsize):
             plt.axvline(x=i, linestyle='--')
-    p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
     if args.fit:
+        # read PSF gaussian coefficients
+        coeff = pickle.load(open( "psf_{0}.p".format(args.band), "rb" ))
+        p0 = (pmap.rprof[0], 1.1, 1e-3, 1e-4)
         popt, pcov = curve_fit(_conv_prof,
-#                             _double_gauss(psf.r, *coeff),
-                                psf.rprof,
+                                _double_gauss(pmap.r, *coeff),
                                 pmap.rprof, p0=p0,
 #                             sigma=pmap.rprof_e
                                 )
         conv_prof = _conv_prof(
-#                         _double_gauss(psf.r, *coeff),
-                            psf.rprof,
+                            _double_gauss(pmap.r, *coeff),
                             *popt)
         print popt, np.sqrt(pcov[1, 1])
         print conv_prof
@@ -219,7 +216,7 @@ if args.profile:
                 np.transpose((pmap.r, pmap.rprof, pmap.rprof_e)))
     # unbinned profile
     pmap.radprof(center=center, rmax=args.rmax)
-#     plt.scatter(pmap.r, pmap.rprof, marker='x', color=args.band)
+    plt.scatter(pmap.r, pmap.rprof, marker='.', color=args.band)
     if args.save:
         np.savetxt(join(datadir, 'ascii',
                 '{0}_{1}_{2}_prof.dat'.format(args.obsid,
