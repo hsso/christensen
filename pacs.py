@@ -79,11 +79,6 @@ class Pacsmap(object):
             phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
             alpha = 3*np.pi/2 - phase_ang*np.pi/180
             cos, sin = np.cos(alpha), np.sin(alpha)
-            print self.cdelt2
-            print("\draw[->,yellow] (axis cs:{0:.3f},{1:.3f}) --\n"
-                    "(axis cs:{2:.3f},{3:.3f});".format(10*cos, 10*sin, 20*cos, 20*sin))
-            print(r"\node[yellow] at (axis cs:{0:.3f},{1:.3f}) {{\sun}};".format(25*cos,
-                            25*sin))
             # origin coordinate is 0 (Numpy and C standards)
             wcs = pywcs.WCS(self.hdus[1].header)
             comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
@@ -105,7 +100,7 @@ class Pacsmap(object):
             plt.show()
             plt.close()
 
-    def shift(self, size=30):
+    def com(self, size=30):
         """select the top 0.99% pixels to calculate the center of mass"""
         hist, bins = np.histogram(self.patch.ravel(), normed=True, bins=100)
         threshold = bins[np.cumsum(hist) * (bins[1] - bins[0]) > 0.992][0]
@@ -119,13 +114,21 @@ class Pacsmap(object):
             plt.scatter(*mapcom[::-1], color='r')
             plt.show()
             plt.close()
-        com = [int(round(i)) for i in mapcom]
-        self.comet = [self.fov-com[0], self.fov-com[1]]
-        self.sh  = np.array(mapcom)-com
-#         self.patch = ndimage.interpolation.shift(self.patch, sh)
+        # center of mass
+        self.com = [int(round(i)) for i in mapcom]
+        # fraction of pixel to com
+        self.sh  = np.array(mapcom) - self.com
+
+    def shift(self, center, size=30):
+        """shift array to be centerd at cneter"""
+        self.comet = [self.fov-center[0], self.fov-center[1]]
         self.fov = int(round(size/self.pix))
-        self.patch = self.patch[com[0]-self.fov:com[0]+self.fov+1,
-                                com[1]-self.fov:com[1]+self.fov+1]
+        self.patch = self.patch[center[0]-self.fov:center[0]+self.fov+1,
+                                center[1]-self.fov:center[1]+self.fov+1]
+
+    def gauss_fit(self):
+        """fit 2D Gaussian"""
+        pass
 
     def add(self, pmap):
         """average orthogonal scans"""
@@ -177,7 +180,8 @@ if args.profile:
 
     pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
-    pmap.shift(size=np.max((40, args.rmax)))
+    pmap.com(size=40)
+    pmap.shift(pmap.com, size=np.max((40, args.rmax)))
     patch = pmap.patch
     fov = patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
@@ -229,7 +233,8 @@ if args.profile:
 else:
     pmap = Pacsmap(args.obsid)
     pmap.add(Pacsmap(args.obsid+1))
-    pmap.shift(size=30)
+    pmap.com(size=30)
+    pmap.shift(pmap.com, size=30)
     patch = pmap.patch
     plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
     plt.colorbar()
