@@ -179,8 +179,7 @@ if args.profile:
     pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
     pmap.com(size=40)
     pmap.shift(pmap.com, size=np.max((40, args.rmax)))
-    patch = pmap.patch
-    fov = patch.shape[0]/2
+    fov = pmap.patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
     if args.binsize:
         pmap.radprof(binsize=args.binsize, center=center, rmax=args.rmax)
