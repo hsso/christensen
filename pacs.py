@@ -75,10 +75,13 @@ class Pacsmap(object):
             end = datetime.strptime(date_end, "%Y-%m-%dT%H:%M:%S.%f")
             mid_time = start + (end-start)/2
             # interpolate ra and dec of the comet
-            ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=2)
-            dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=3)
+            ra = gildas.deltadot(mid_time, filename=horizons_file[args.obsid],
+                    column=2)
+            dec = gildas.deltadot(mid_time, filename=horizons_file[args.obsid],
+                    column=3)
             # calculate direction toward the Sun
-            phase_ang = gildas.deltadot(mid_time, filename=horizons_file[args.obsid], column=8)
+            phase_ang = gildas.deltadot(mid_time,
+                    filename=horizons_file[args.obsid], column=8)
             alpha = 3*np.pi/2 - phase_ang*np.pi/180
             cos, sin = np.cos(alpha), np.sin(alpha)
             # origin coordinate is 0 (Numpy and C standards)
@@ -104,13 +107,17 @@ class Pacsmap(object):
 
     def com(self, size=30):
         """select the top 0.99% pixels to calculate the center of mass"""
-        hist, bins = np.histogram(self.patch.ravel(), normed=True, bins=100)
+        fov = int(round(size/self.pix))
+        center = self.patch.shape[0]/2
+        zoom = self.patch[center-fov:center+fov+1,
+                            center-fov:center+fov+1]
+        hist, bins = np.histogram(zoom.ravel(), normed=True, bins=100)
         threshold = bins[np.cumsum(hist) * (bins[1] - bins[0]) > 0.992][0]
-        mpatch = np.ma.masked_less(self.patch, threshold)
+        mpatch = np.ma.masked_less(zoom, threshold)
         mapcom = ndimage.measurements.center_of_mass(mpatch)
         if args.debug:
             plt.imshow(self.patch, origin="lower")
-            mapmax = ndimage.measurements.maximum_position(self.patch)[::-1]
+            mapmax = ndimage.measurements.maximum_position(zoom)[::-1]
             plt.scatter(*mapmax)
             # plot center-of-mass
             plt.scatter(*mapcom[::-1], color='r')
@@ -120,6 +127,7 @@ class Pacsmap(object):
         self.com = [int(round(i)) for i in mapcom]
         # fraction of pixel to com
         self.sh  = np.array(mapcom) - self.com
+        self.com = [center - fov + i for i in mapcom]
 
     def shift(self, center, size=30):
         """shift array to be centerd at cneter"""
@@ -239,7 +247,7 @@ else:
     if args.band == "blue":
         levels = np.arange(-1.3, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
     else:
-        levels = np.arange(-0.8, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
+        levels = np.arange(-0.7, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
     zpatch = ndimage.zoom(patch, 4)
     X = np.linspace(0, patch.shape[0]-1, len(zpatch))
     plt.contour(X, X, np.log10(np.abs(zpatch)), levels=levels, zorder=1)
