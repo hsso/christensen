@@ -165,12 +165,14 @@ class Pacsmap(object):
             ri = sr.astype(np.int16)
             deltar = ri[1:] - ri[:-1]
             rind = np.where(deltar)[0]
-            rind = np.append([0], rind+1)
+            rind = np.concatenate(([0], rind+1, [len(ri)]))
+            n = rind[1:] - rind[:-1]
             self.rprof = np.array([np.mean(sim[lo:hi]) for lo,hi in
                                     zip(rind[:-1], rind[1:])])
             self.rprof_e = np.array([np.std(sim[lo:hi]) for lo,hi in
                                     zip(rind[:-1], rind[1:])])
-#             self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e, 0.99*self.rprof)
+            self.rprof_e = np.where(self.rprof > self.rprof_e, self.rprof_e,
+                                    0.99*self.rprof)
             self.r = binsize*(np.unique(ri)[:-1] + 0.5)
         else:
             self.r = sr
@@ -244,6 +246,7 @@ else:
     plt.colorbar()
     fov = patch.shape[0]/2
     plt.title('{0} {1}'.format(args.obsid, args.band))
+    # plot contours
     if args.band == "blue":
         levels = np.arange(-1.3, 0.1, 0.1) + .95*np.log10(np.abs(patch)).max()
     else:
