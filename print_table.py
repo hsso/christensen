@@ -33,14 +33,14 @@ for obsid in obsids:
         legstep = hierarch_key(hdus[0].header, 'mapScanCrossScan')
         map_size = r"${}\times{:.1f}$".format(leglength,
                                               numlegs*legstep/60).replace('.', r'\farcm')
-        print leglength, numlegs, legstep
+        print(leglength, numlegs, legstep)
     else:
         scan_ang, map_size, scan_speed = "", "", ""
     # calculate phase angle
     rh = deltadot(mid_time, filename="horizons.txt", column=4).item()
     delta = deltadot(mid_time, filename="horizons.txt", column=6).item()
     phi = deltadot(mid_time, filename="horizons.txt", column=8).item()
-    f.write("{:%Y-%m}-{:05.2f} & {} & {} & {:.1f} & {} & {} & {} &"
+    f.write("{:%Y-%m}-{:06.3f} & {} & {} & {:.1f} & {} & {} & {} &"
             "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time,
             frac_day(mid_time), ins, obsid, exp_min, scan_ang,
             map_size, scan_speed, rh, delta, phi))
