@@ -4,6 +4,10 @@ from herschel import HIFISpectrum, hififits, fwhm
 import matplotlib.pyplot as plt
 from christensen import datadir
 from hsso.gildas import deltadot
+import numpy as np
+
+def center(x, y, factor):
+    return (x-y)*factor
 
 obsid = 1342204014
 
@@ -15,8 +19,23 @@ ra_end = deltadot(spec.end, filename="horizons.txt", column=2).item()
 dec_end = deltadot(spec.end, filename="horizons.txt", column=3).item()
 ra_mid = deltadot(spec.mid_time, filename="horizons.txt", column=2).item()
 dec_mid = deltadot(spec.mid_time, filename="horizons.txt", column=3).item()
-plt.plot((ra_start, ra_mid, ra_end), (dec_start, dec_mid, dec_end), marker='x')
-beam = fwhm()/3600.
+# RA and Dec of synthetic beam
+ra_beam = np.average((spec.ra, specv.ra))
+dec_beam = np.average((spec.dec, specv.dec))
+spec.ra -= ra_beam
+specv.ra -= ra_beam
+spec.dec -= dec_beam
+specv.dec -= dec_beam
+spec.ra *= 3600
+spec.dec *= 3600
+specv.ra *= 3600
+specv.dec *= 3600
+ra_start = center(ra_start, ra_beam, 3600)
+dec_start = center(dec_start, dec_beam, 3600)
+ra_end = center(ra_end, ra_beam, 3600)
+dec_end = center(dec_end, dec_beam, 3600)
+plt.plot((ra_start, ra_end), (dec_start, dec_end), marker='x')
+beam = fwhm()
 circh = plt.Circle((spec.ra, spec.dec), beam, color='blue', alpha=0.5)
 circv = plt.Circle((specv.ra, specv.dec), beam, color='red', alpha=0.5)
 ax = plt.gca()
