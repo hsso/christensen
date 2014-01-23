@@ -78,4 +78,7 @@ ax.arrow(h_start[0], h_start[1], *(h_end-h_start),
     head_width=1, head_length=1, color='green', ec='g')
 ax.invert_xaxis()
 plt.axis('equal')
+plt.xlabel('RA')
+plt.ylabel('Dec')
+plt.savefig('pointing.pdf')
 plt.show()
