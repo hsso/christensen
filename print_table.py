@@ -9,7 +9,7 @@ from datetime import datetime
 from hsso.gildas import frac_day, deltadot
 
 def hierarch_key(header, value):
-    for i in header.ascardlist().keys():
+    for i in header.keys():
         if i.find('META_') > 0 and header[i] == value:
             return header[i[4:]]
 
@@ -25,6 +25,7 @@ for obsid in obsids:
     mid_time = start + exp/2
     exp_min = exp.seconds/60.
     ins = hdus[0].header['INSTRUME']
+    od = hdus[0].header['ODNUMBER']
     if ins == "PACS":
         scan_ang = "{:.0f}".format(hierarch_key(hdus[0].header, 'mapScanAngle'))
         scan_speed = ms_speed[hierarch_key(hdus[0].header, 'mapScanSpeed')]
@@ -42,7 +43,7 @@ for obsid in obsids:
     phi = deltadot(mid_time, filename="horizons.txt", column=8).item()
     if obsid <= 1342186622:
         obsid = r"{0}\textsuperscript{{\emph{{g}}}}".format(obsid)
-    f.write("{:%Y-%m}-{:06.3f} & {} & {} & {:.1f} & {} & {} & {} &"
-            "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time,
+    f.write("{:%Y-%m}-{:06.3f} & {} & {} & {} & {:.1f} & {} & {} & {} &"
+            "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time, od,
             frac_day(mid_time), ins, obsid, exp_min, scan_ang,
             map_size, scan_speed, rh, delta, phi))

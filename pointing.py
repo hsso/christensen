@@ -78,7 +78,7 @@ plt.scatter(spec.ra, spec.dec, color='blue')
 plt.scatter(specv.ra, specv.dec, color='red')
 ax.arrow(h_start[0], h_start[1], *(h_end-h_start),
     head_width=1, head_length=1, color='green', ec='g')
-ax.add_line(Line2D([0, 20*np.sin(pa)],[0, 20*np.cos(pa)]))
+# ax.add_line(Line2D([0, 20*np.sin(pa)],[0, 20*np.cos(pa)]))
 ax.invert_xaxis()
 plt.axis('equal')
 plt.xlabel('RA')
