@@ -2,6 +2,7 @@
 
 from herschel import HIFISpectrum, hififits, fwhm
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from christensen import datadir
 from hsso.gildas import deltadot
 import numpy as np
@@ -21,6 +22,7 @@ H_s = (260.194933, -47.590554, 268.507438)
 A_s = (260.178380, -47.754790, 268.519700)
 H_e = (260.189776, -47.590027, 268.524744)
 A_e = (260.173150, -47.754260, 268.537060)
+pa = (268.5-180)*np.pi/180
 
 spec = HIFISpectrum(hififits(datadir, obsid, 'WBS', 'H', 'LSB'), 4)
 specv = HIFISpectrum(hififits(datadir, obsid, 'WBS', 'V', 'LSB'), 4)
@@ -76,6 +78,7 @@ plt.scatter(spec.ra, spec.dec, color='blue')
 plt.scatter(specv.ra, specv.dec, color='red')
 ax.arrow(h_start[0], h_start[1], *(h_end-h_start),
     head_width=1, head_length=1, color='green', ec='g')
+ax.add_line(Line2D([0, 20*np.sin(pa)],[0, 20*np.cos(pa)]))
 ax.invert_xaxis()
 plt.axis('equal')
 plt.xlabel('RA')
