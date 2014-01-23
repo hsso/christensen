@@ -42,8 +42,8 @@ for obsid in obsids:
     delta = deltadot(mid_time, filename="horizons.txt", column=6).item()
     phi = deltadot(mid_time, filename="horizons.txt", column=8).item()
     if obsid <= 1342186622:
-        obsid = r"{0}\textsuperscript{{\emph{{g}}}}".format(obsid)
+        obsid = r"{0}\textsuperscript{{\emph{{h}}}}".format(obsid)
     f.write("{:%Y-%m}-{:06.3f} & {} & {} & {} & {:.1f} & {} & {} & {} &"
-            "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time, od,
-            frac_day(mid_time), ins, obsid, exp_min, scan_ang,
+            "{:.2f} & {:.2f} & {:.2f}\\\\\n".format(mid_time,
+            frac_day(mid_time), od, ins, obsid, exp_min, scan_ang,
             map_size, scan_speed, rh, delta, phi))
