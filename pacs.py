@@ -208,8 +208,8 @@ if args.profile:
         conv_prof = _conv_prof(
                             _double_gauss(pmap.r, *coeff),
                             *popt)
-        print popt, np.sqrt(pcov[1, 1])
-        print conv_prof
+        print(popt, np.sqrt(pcov[1, 1]))
+        print(conv_prof)
         plt.plot(pmap.r, conv_prof, color="green")
         np.savetxt(join(datadir, 'ascii',
                 '{0}_{1}_{2}_{3}_prof_fit.dat'.format(args.obsid,
