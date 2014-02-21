@@ -20,7 +20,7 @@ parser.add_argument('-b', '--backend', default='WBS', choices=('HRS', 'WBS'))
 parser.add_argument('--sideband', default='', choices=('', 'LSB', 'USB'))
 parser.add_argument('--subband', default=0, type=int, choices=range(5))
 parser.add_argument('-d', '--debug', action='store_true', help='debug mode')
-parser.add_argument('--fftlim', default=2e2, type=float,
+parser.add_argument('--fftlim', default=0, type=float,
                     help='FFT high frequency limit')
 parser.add_argument('-n', '--num', default=8, type=int,
                     help='number of sine waves')
@@ -58,7 +58,7 @@ elif args.fold:
     spec.fold()
     spec.scale((-10, 10))
     spec.save(fileout('-H_folded'))
-    spec.fftbase(args.fftlim, shift=-0.4, linelim=1., plot=args.debug)
+    spec.fftbase(args.fftlim, shift=-0., linelim=1., plot=args.debug)
     spec.save(fileout('-H_baseline'), "baseline")
     spec.save(fileout('-H_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
@@ -76,7 +76,7 @@ elif args.fold:
     spec.add(specv)
     spec.scale((-10, 10))
     spec.save(fileout('_ave'))
-    spec.fftbase(args.fftlim, shift=-0.2, plot=args.debug)
+    spec.fftbase(args.fftlim, shift=-0., plot=args.debug)
     spec.save(fileout('_baseline'), "baseline")
     spec.save(fileout('_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
