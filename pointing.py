@@ -76,6 +76,7 @@ ax.add_patch(circh)
 ax.add_patch(circv)
 plt.scatter(spec.ra, spec.dec, color='blue')
 plt.scatter(specv.ra, specv.dec, color='red')
+plt.plot((ra_start, ra_mid, ra_end), (dec_start, dec_mid, dec_end), marker='x')
 ax.arrow(h_start[0], h_start[1], *(h_end-h_start),
     head_width=1, head_length=1, color='green', ec='g')
 # ax.add_line(Line2D([0, 20*np.sin(pa)],[0, 20*np.cos(pa)]))
