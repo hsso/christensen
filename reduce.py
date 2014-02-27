@@ -48,6 +48,7 @@ specv = HIFISpectrum(hififits(datadir, obsid, args.backend, 'V', args.sideband),
                     args.subband, freq0=freq0[args.mol])
 
 if args.mol == "NH3":
+    # fold and average H+V
     spec.fold()
     specv.fold()
     spec.add(specv)
@@ -59,26 +60,27 @@ elif args.fold:
     spec.fold()
     spec.fftbase(args.fftlim, shift=-0., linelim=1., plot=args.debug)
     if args.backend == "HRS": spec.resample()
-    spec.save(fileout('-H_fluxcal'), "fluxcal")
+    spec.save(fileout('-H_fluxcal_{0}'.format(args.mol)), "fluxcal")
     if args.debug: spec.plot()
     print(spec.intens, spec.error, spec.snr)
 
     specv.fold()
     specv.fftbase(args.fftlim, plot=args.debug)
     if args.backend == "HRS": specv.resample()
-    specv.save(fileout('-V_fluxcal'), "fluxcal")
+    spec.save(fileout('-V_fluxcal_{0}'.format(args.mol)), "fluxcal")
     if args.debug: specv.plot()
     print(specv.intens, specv.error, specv.snr)
 
     spec.add(specv)
     spec.fftbase(args.fftlim, shift=-0., plot=args.debug)
-    spec.save(fileout('_fluxcal'), "fluxcal")
+    spec.save(fileout('_fluxcal_{0}'.format(args.mol)), "fluxcal")
     if args.debug: spec.plot()
     print(spec.intens, spec.error, spec.snr)
 else:
     spec.scale((-60, 10))
     spec.save(fileout('-H'))
-    spec.fftbase(args.fftlim, shift=-0.4, linelim=1., throw=True, plot=args.debug)
+    spec.fftbase(args.fftlim, shift=-0.4, linelim=1., throw=True,
+            plot=args.debug)
     spec.save(fileout('-H_unfolded'), "baseline")
     spec.save(fileout('-H_unfold_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
@@ -92,7 +94,8 @@ else:
 
     spec.add(specv)
     spec.save(fileout('_aver'))
-    spec.fftbase(args.fftlim, shift=-0.2, linelim=1., throw=True, plot=args.debug)
+    spec.fftbase(args.fftlim, shift=-0.2, linelim=1., throw=True,
+            plot=args.debug)
     spec.save(fileout('_unfolded'), "baseline")
     spec.save(fileout('_unfold_fluxcal'), "fluxcal")
     if args.debug: spec.plot()
