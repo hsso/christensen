@@ -63,6 +63,7 @@ elif args.fold:
     if args.backend == "HRS": spec.resample()
     spec.save(fileout('-H_fluxcal_{0}'.format(args.mol)), "fluxcal")
     print(spec.intens, spec.error, spec.snr)
+    print(spec.vshift, spec.vshift_e)
 
     specv.fold()
     specv.fftbase(args.fftlim, plot=args.debug)
@@ -70,12 +71,14 @@ elif args.fold:
     if args.backend == "HRS": specv.resample()
     spec.save(fileout('-V_fluxcal_{0}'.format(args.mol)), "fluxcal")
     print(specv.intens, specv.error, specv.snr)
+    print(specv.vshift, specv.vshift_e)
 
     spec.add(specv)
     spec.fftbase(args.fftlim, shift=-0., plot=args.debug)
     spec.save(fileout('_fluxcal_{0}'.format(args.mol)), "fluxcal")
     if args.debug: spec.plot()
     print(spec.intens, spec.error, spec.snr)
+    print(spec.vshift, spec.vshift_e)
 else:
     spec.scale((-60, 10))
     spec.save(fileout('-H'))
