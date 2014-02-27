@@ -11,6 +11,7 @@ from herschel import HIFISpectrum, hififits
 from christensen import datadir, freq0
 
 def fileout(suffix):
+    """Return full path to data file"""
     filename = "{}_{}{}.dat".format(obsid, args.backend, suffix)
     return join(datadir, 'ascii', filename)
 
@@ -51,7 +52,7 @@ if args.mol == "NH3":
     specv.fold()
     spec.add(specv)
     spec.fftbase(args.fftlim, line=(), plot=args.debug)
-#     spec.resample()
+    if args.backend == "HRS": spec.resample()
     spec.save(fileout('_NH3'), "fluxcal")
     if args.debug: spec.plot()
 elif args.fold:
