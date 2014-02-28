@@ -53,10 +53,12 @@ if args.mol == "NH3":
     spec.fold()
     specv.fold()
     spec.add(specv)
-    spec.fftbase(args.fftlim, line=(), plot=args.debug)
     if args.backend == "HRS": spec.resample()
+    spec.fftbase(args.fftlim, line=(), plot=args.debug)
     spec.save(fileout('_'+args.mol), "fluxcal")
-    if args.debug: spec.plot()
+    if args.debug:
+        spec.plot()
+        spec.plot(flux="fluxcal")
 elif args.fold:
     spec.fold()
     if args.backend == "HRS": spec.resample()
