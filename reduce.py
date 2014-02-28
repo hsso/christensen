@@ -30,13 +30,14 @@ parser.add_argument('--deg', default=2, type=int,
                     help='baseline polynomial degree')
 parser.add_argument('--twiny', action='store_true')
 parser.add_argument('--fold', action='store_true')
-parser.add_argument("--lim", nargs=2, type=float, default=(-1, 1),
+parser.add_argument("--lim", type=float, default=1,
                     help='line limits in km/s')
 args = parser.parse_args()
 
 subband = {'HRS': 1, 'WBS': 4}
 sideband = {'H2O': 'LSB', 'NH3': 'USB'}
 fftlim = {'HRS': 1e3, 'WBS': 2.5e2}
+vshift = {'HRS': 0, 'WBS': -0.4}
 if not args.subband: args.subband = subband[args.backend]
 if not args.sideband: args.sideband = sideband[args.mol]
 if not args.fftlim: args.fftlim = fftlim[args.backend]
@@ -58,18 +59,19 @@ if args.mol == "NH3":
     if args.debug: spec.plot()
 elif args.fold:
     spec.fold()
-    spec.fftbase(args.fftlim, shift=-0., linelim=1., plot=args.debug)
-    if args.debug: spec.plot()
     if args.backend == "HRS": spec.resample()
+    spec.fftbase(args.fftlim, shift=vshift[args.backend], linelim=args.lim,
+            plot=args.debug)
+    if args.debug: spec.plot()
     spec.save(fileout('-H_fluxcal_{0}'.format(args.mol)), "fluxcal")
     print(spec.intens, spec.error, spec.snr)
     print(spec.vshift, spec.vshift_e)
 
     specv.fold()
+    if args.backend == "HRS": specv.resample()
     specv.fftbase(args.fftlim, plot=args.debug)
     if args.debug: specv.plot()
-    if args.backend == "HRS": specv.resample()
-    spec.save(fileout('-V_fluxcal_{0}'.format(args.mol)), "fluxcal")
+    specv.save(fileout('-V_fluxcal_{0}'.format(args.mol)), "fluxcal")
     print(specv.intens, specv.error, specv.snr)
     print(specv.vshift, specv.vshift_e)
 
