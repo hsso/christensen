@@ -1,4 +1,5 @@
 #!/usr/bin/python
+"""Plot pointing position of Herschel observation"""
 
 from herschel import HIFISpectrum, hififits, fwhm
 import matplotlib.pyplot as plt
