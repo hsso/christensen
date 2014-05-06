@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from os.path import join
 import glob
-import pywcs
+import astropy.wcs as pywcs
 import argparse
 from christensen import datadir, figsdir, horizons_file
 import matplotlib.cm as cm
@@ -86,7 +86,7 @@ class Pacsmap(object):
             cos, sin = np.cos(alpha), np.sin(alpha)
             # origin coordinate is 0 (Numpy and C standards)
             wcs = pywcs.WCS(self.hdus[1].header)
-            comet = wcs.wcs_sky2pix([(ra, dec)], 0)[0]
+            comet = wcs.wcs_world2pix([(ra, dec)], 0)[0]
             com = [int(round(i)) for i in comet]
             sh  = comet-com
             # shift array to center on comet nucleus
