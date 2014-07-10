@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Print Christensen observing log table"""
+"""Plot production rates"""
 
 import numpy as np
 from christensen import datadir
