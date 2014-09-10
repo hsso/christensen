@@ -64,7 +64,7 @@ if args.mol == "NH3":
 elif args.fold:
     spec.fold()
     if args.backend == "HRS": spec.resample()
-    spec.fftbase(args.fftlim, shift=vshift[args.backend], linelim=args.lim,
+    spec.fftbase(args.fftlim, shift=vshift[args.backend], linelim=(args.lim,),
             plot=args.debug)
     if args.debug: spec.plot()
     spec.save(fileout('-H_fluxcal_{0}'.format(args.mol)), "fluxcal")
@@ -88,7 +88,7 @@ elif args.fold:
 else:
     spec.scale((-60, 10))
     spec.save(fileout('-H'))
-    spec.fftbase(args.fftlim, shift=-0.4, linelim=1., throw=True,
+    spec.fftbase(args.fftlim, shift=-0.4, linelim=(1.,), throw=True,
             plot=args.debug)
     spec.save(fileout('-H_unfolded'), "baseline")
     spec.save(fileout('-H_unfold_fluxcal'), "fluxcal")
@@ -96,14 +96,14 @@ else:
 
     specv.scale((-60, 10))
     specv.save(fileout('-V'))
-    specv.fftbase(args.fftlim, linelim=1., throw=True, plot=args.debug)
+    specv.fftbase(args.fftlim, linelim=(1.,), throw=True, plot=args.debug)
     specv.save(fileout('-V_unfolded'), "baseline")
     specv.save(fileout('-V_unfold_fluxcal'), "fluxcal")
     if args.debug: specv.plot()
 
     spec.add(specv)
     spec.save(fileout('_aver'))
-    spec.fftbase(args.fftlim, shift=-0.2, linelim=1., throw=True,
+    spec.fftbase(args.fftlim, shift=-0.2, linelim=(1.,), throw=True,
             plot=args.debug)
     spec.save(fileout('_unfolded'), "baseline")
     spec.save(fileout('_unfold_fluxcal'), "fluxcal")
