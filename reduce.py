@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from os.path import expanduser, join
 import argparse
-from scipy import linalg, fftpack
+from scipy import linalg
 from hsso import gildas
-from hsso.class_utils import pgram_peaks, linfunc, fitfunc
+from hsso.class_utils import pgram_peaks, linfunc
 from herschel import HIFISpectrum, hififits
 from christensen import datadir, freq0
 
