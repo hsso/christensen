@@ -83,6 +83,10 @@ elif args.fold:
     spec.fftbase(args.fftlim, shift=-0., plot=args.debug)
     spec.save(fileout('_fluxcal_{0}'.format(args.mol)), "fluxcal")
     if args.debug: spec.plot()
+    outfile = "{}_{}.pdf".format(obsid, args.backend)
+    spec.plot(x="vel", y="fluxcal", lim=20, filename=join(datadir, outfile))
+    spec.tofits(join(datadir, outfile.replace("pdf", "fits"),
+        columns=("freq", "fluxcal")))
     print(spec.intens, spec.error, spec.snr)
     print(spec.vshift, spec.vshift_e)
 else:
