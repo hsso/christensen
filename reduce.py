@@ -48,6 +48,8 @@ spec = HIFISpectrum(hififits(datadir, obsid, args.backend, 'H', args.sideband),
 specv = HIFISpectrum(hififits(datadir, obsid, args.backend, 'V', args.sideband),
                     args.subband, freq0=freq0[args.mol])
 
+spec.save('{0}'.format(obsid), "flux")
+
 if args.mol == "NH3":
     # fold and average H+V
     spec.fold()
