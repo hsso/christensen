@@ -197,8 +197,11 @@ class Pacsmap2(object):
             self.rprof_e = self.rprof_e[mask]
 
 if args.profile:
-    pmap = Pacsmap(args.obsid, size=np.max((60, args.rmax+20)))
-    pmap.add(Pacsmap(args.obsid+1, size=np.max((60, args.rmax+20))))
+    # Use Pacsmap class in herschel module (untested)
+    pmap = Pacsmap(pacsfile(args.obsid), fn=horizons_file[args.obsid],
+            size=np.max((60, args.rmax+20)))
+    pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid],
+            size=np.max((60, args.rmax+20))))
     pmap.com(size=40)
     pmap.shift(pmap.com, size=np.max((40, args.rmax)))
     fov = pmap.patch.shape[0]/2
