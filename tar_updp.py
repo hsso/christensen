@@ -12,9 +12,13 @@ with tarfile.open("christensen_updp.tar.gz", "w:gz") as tar:
             source_file = join(datadir, outfile)
             tar.add(source_file, arcname=join('Christensen', 'HIFI', outfile))
     # PACS data
-    for obsid in obsids[::2]: # First obsid in each pair
+    for obsid in obsids[:3:2]: # First obsid in each pair
         for band in ['blue', 'red']:
             outfile = "{}_{}.png".format(obsid, band)
+            source_file = join(figsdir, outfile)
+            tar.add(source_file, arcname=join('Christensen', 'PACS', outfile))
+            outfile = "{}_{}.fits".format(obsid, band)
+            source_file = join(datadir, outfile)
             tar.add(source_file, arcname=join('Christensen', 'PACS', outfile))
 
 tar.close()

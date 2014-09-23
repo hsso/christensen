@@ -278,3 +278,4 @@ else:
     plt.savefig(join(figsdir, '{0}_{1}.png'.format(args.obsid, args.band)),
                 bbox_inches=extent)
     plt.show()
+    pmap.tofits(join(datadir, '{0}_{1}.fits'.format(args.obsid, args.band)))
