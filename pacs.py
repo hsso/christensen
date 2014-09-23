@@ -13,6 +13,7 @@ from scipy import ndimage, stats, signal
 from scipy.optimize import curve_fit
 from datetime import datetime
 from hsso import gildas
+from herschel import Pacsmap
 import pickle
 
 parser = argparse.ArgumentParser()
@@ -32,13 +33,17 @@ def mirror(arr, sign=1):
     return np.append(sign*arr[::-1], arr)
 
 def _double_gauss(x, *p):
-    """Gaussian fitting"""
+    """
+    Sum of Gaussian functions
+    """
     gauss1 = p[0]*stats.norm.pdf(x, 0, p[1])
     gauss2 = p[2]*stats.norm.pdf(x, p[3], p[4])
     return gauss1+gauss2
 
 def _conv_prof(x, *p):
-    """convolved power law
+    """
+    Convolved power law
+
     x : map profile
     """
     prof_con = signal.convolve(mirror(p[0]*pmap.r**-p[1] + p[2]), mirror(x),
@@ -52,8 +57,15 @@ def _conv_prof(x, *p):
         plt.plot(pmap.r, prof_con[n:])
     return prof_con[n:]
 
-class Pacsmap(object):
-    """Read PACS photometry map"""
+def pacsfile(obsid):
+    fitsfile = glob.glob(join(datadir, str(obsid), 'level2',
+        'HPPPMAP{}'.format(args.band[0].upper()), '*fits.gz'))[0]
+    return fitsfile
+
+class Pacsmap2(object):
+    """
+    Read PACS photometry map
+    """
 
     def __init__(self, obsid, size=60, zoom=0, comet=True):
         """return patch centered on the nucleus"""
@@ -237,8 +249,8 @@ if args.profile:
     plt.ylim(ymin=1e-6)
     plt.show()
 else:
-    pmap = Pacsmap(args.obsid)
-    pmap.add(Pacsmap(args.obsid+1))
+    pmap = Pacsmap(pacsfile(args.obsid), fn=horizons_file[args.obsid])
+    pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid]))
     pmap.com(size=30)
     pmap.shift(pmap.com, size=30)
     patch = pmap.patch
