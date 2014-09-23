@@ -48,10 +48,8 @@ spec = HIFISpectrum(hififits(datadir, obsid, args.backend, 'H', args.sideband),
 specv = HIFISpectrum(hififits(datadir, obsid, args.backend, 'V', args.sideband),
                     args.subband, freq0=freq0[args.mol])
 
-spec.save('{0}'.format(obsid), "flux")
-
 if args.mol == "NH3":
-    # fold and average H+V
+    # fold and average H+V for NH3
     spec.fold()
     specv.fold()
     spec.add(specv)
@@ -62,6 +60,7 @@ if args.mol == "NH3":
         spec.plot()
         spec.plot(flux="fluxcal")
 elif args.fold:
+    # fold and average H+V for H2O
     spec.fold()
     if args.backend == "HRS": spec.resample()
     spec.fftbase(args.fftlim, shift=vshift[args.backend], linelim=(args.lim,),
@@ -90,6 +89,7 @@ elif args.fold:
     print(spec.intens, spec.error, spec.snr)
     print(spec.vshift, spec.vshift_e)
 else:
+    # average unfolded H+V spectra for H2O
     spec.scale((-60, 10))
     spec.save(fileout('-H'))
     spec.fftbase(args.fftlim, shift=-0.4, linelim=(1.,), throw=True,
