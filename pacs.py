@@ -202,7 +202,7 @@ if args.profile:
             size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid],
             size=np.max((60, args.rmax+20))))
-    pmap.com(size=40)
+    pmap.center_of_mass(size=40)
     pmap.shift(pmap.com, size=np.max((40, args.rmax)))
     fov = pmap.patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
@@ -254,7 +254,7 @@ if args.profile:
 else:
     pmap = Pacsmap(pacsfile(args.obsid), fn=horizons_file[args.obsid])
     pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid]))
-    pmap.com(size=30)
+    pmap.center_of_mass(size=30)
     pmap.shift(pmap.com, size=30)
     patch = pmap.patch
     plt.imshow(patch, origin="lower", interpolation=None, cmap=cm.gist_heat_r)
