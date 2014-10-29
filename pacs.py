@@ -64,6 +64,7 @@ def pacsfile(obsid):
 
 if args.profile:
     # Use Pacsmap class in herschel module (untested)
+    # rmax should be >0 (60)
     pmap = Pacsmap(pacsfile(args.obsid), fn=horizons_file[args.obsid],
             size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid],
