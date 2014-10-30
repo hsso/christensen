@@ -69,7 +69,7 @@ if args.profile:
             size=np.max((60, args.rmax+20)))
     pmap.add(Pacsmap(pacsfile(args.obsid+1), fn=horizons_file[args.obsid],
             size=np.max((60, args.rmax+20))))
-    pmap.center_of_mass(size=40)
+    pmap.center_of_mass(size=40, debug=True, percentile=0.96)
     pmap.shift(pmap.com, size=np.max((40, args.rmax)))
     fov = pmap.patch.shape[0]/2
     center = (fov+pmap.sh[1], fov+pmap.sh[0])
